@@ -76,7 +76,15 @@ app.get('/api/files', (req, res) => {
 // API: Upload file (PROTECTED)
 app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ error: 'No file uploaded.' });
-  const fileName = req.file.originalname;
+  
+  let fileName = req.file.originalname;
+  const folder = req.body.folder || req.body.path || req.body.prefix || '';
+  if (folder) {
+    const cleanFolder = folder.replace(/^\/+|\/+$/g, ''); // strip leading/trailing slashes
+    if (cleanFolder) {
+      fileName = `${cleanFolder}/${fileName}`;
+    }
+  }
   const filePath = req.file.path;
   
   // Hardened: Use fPutObject to stream from disk directly to MinIO, bypassing Node heap

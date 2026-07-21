@@ -93,14 +93,69 @@ func copyToClipboard(text string) {
 	fmt.Println("📋 Direct link copied to clipboard!")
 }
 
+func printHelp() {
+	fmt.Println(`dcron.in CDN CLI Upload Tool v1.1.0
+
+USAGE:
+  cdn <file-path> [target-folder]
+  cdn <file-path> --folder <target-folder>
+  cdn <file-path> --path <target-folder>
+
+EXAMPLES:
+  cdn photo.png                        Upload to https://cdn.dcron.in/photo.png
+  cdn windows.iso /archive             Upload to https://cdn.dcron.in/archive/windows.iso
+  cdn photo.png -f /screenshots/       Upload to https://cdn.dcron.in/screenshots/photo.png
+  cdn photo.png --url https://cdn.dcron.in
+
+FLAGS:
+  -f, --folder, -p, --path <folder>   Subfolder target path on CDN (e.g. /archive/ or /blog/)
+  -u, --url <server-url>              Custom CDN Server URL
+  -w, --password <password>           Custom CDN Admin Password
+  -h, --help                          Display CLI documentation and usage`)
+}
+
 func main() {
 	if len(os.Args) < 2 {
-		fmt.Println("Usage: cdn <file-path>")
-		fmt.Println("Example: cdn photo.jpg")
+		printHelp()
 		os.Exit(1)
 	}
 
-	filePath := os.Args[1]
+	var filePath string
+	var folder string
+	var overrideURL string
+	var overridePwd string
+
+	// Parse arguments and flags
+	args := os.Args[1:]
+	for i := 0; i < len(args); i++ {
+		arg := args[i]
+		if arg == "-h" || arg == "--help" || arg == "help" {
+			printHelp()
+			os.Exit(0)
+		} else if (arg == "-f" || arg == "--folder" || arg == "-p" || arg == "--path") && i+1 < len(args) {
+			folder = args[i+1]
+			i++
+		} else if (arg == "-u" || arg == "--url") && i+1 < len(args) {
+			overrideURL = args[i+1]
+			i++
+		} else if (arg == "-w" || arg == "--password") && i+1 < len(args) {
+			overridePwd = args[i+1]
+			i++
+		} else if !strings.HasPrefix(arg, "-") {
+			if filePath == "" {
+				filePath = arg
+			} else if folder == "" {
+				folder = arg
+			}
+		}
+	}
+
+	if filePath == "" {
+		fmt.Println("Error: No file specified.")
+		printHelp()
+		os.Exit(1)
+	}
+
 	fileInfo, err := os.Stat(filePath)
 	if err != nil {
 		fmt.Printf("Error: File '%s' not found.\n", filePath)
@@ -108,6 +163,13 @@ func main() {
 	}
 
 	cdnURL, cdnPwd := loadConfig()
+	if overrideURL != "" {
+		cdnURL = overrideURL
+	}
+	if overridePwd != "" {
+		cdnPwd = overridePwd
+	}
+
 	if cdnURL == "" || cdnPwd == "" {
 		fmt.Println("=== dcron.in CDN CLI Setup ===")
 		fmt.Print("CDN Server URL [https://cdn.dcron.in]: ")
@@ -133,7 +195,13 @@ func main() {
 		}
 	}
 
-	fmt.Printf("Uploading %s to %s...\n", filepath.Base(filePath), cdnURL)
+	cleanFolder := strings.Trim(folder, "/")
+	targetName := filepath.Base(filePath)
+	if cleanFolder != "" {
+		targetName = cleanFolder + "/" + targetName
+	}
+
+	fmt.Printf("Uploading %s to %s...\n", targetName, cdnURL)
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -144,6 +212,11 @@ func main() {
 
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
+
+	if cleanFolder != "" {
+		_ = writer.WriteField("folder", cleanFolder)
+	}
+
 	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
 	if err != nil {
 		fmt.Printf("Error creating form: %v\n", err)
@@ -187,7 +260,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	publicURL := fmt.Sprintf("%s/%s", strings.TrimRight(cdnURL, "/"), filepath.Base(filePath))
+	publicURL := fmt.Sprintf("%s/%s", strings.TrimRight(cdnURL, "/"), targetName)
 	fmt.Printf("✔ Successfully uploaded: %s\n", publicURL)
 	copyToClipboard(publicURL)
 }
