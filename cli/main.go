@@ -94,21 +94,17 @@ func copyToClipboard(text string) {
 }
 
 func printHelp() {
-	fmt.Println(`dcron.in CDN CLI Upload Tool v1.1.0
+	fmt.Println(`dcron.in CDN CLI Upload Tool v1.1.1
 
 USAGE:
-  cdn <file-path> [target-folder]
-  cdn <file-path> --folder <target-folder>
-  cdn <file-path> --path <target-folder>
+  cdn <file-path>
 
 EXAMPLES:
   cdn photo.png                        Upload to https://cdn.dcron.in/photo.png
-  cdn windows.iso /archive             Upload to https://cdn.dcron.in/archive/windows.iso
-  cdn photo.png -f /screenshots/       Upload to https://cdn.dcron.in/screenshots/photo.png
+  cdn windows.iso                      Upload to https://cdn.dcron.in/windows.iso
   cdn photo.png --url https://cdn.dcron.in
 
 FLAGS:
-  -f, --folder, -p, --path <folder>   Subfolder target path on CDN (e.g. /archive/ or /blog/)
   -u, --url <server-url>              Custom CDN Server URL
   -w, --password <password>           Custom CDN Admin Password
   -h, --help                          Display CLI documentation and usage`)
@@ -121,20 +117,15 @@ func main() {
 	}
 
 	var filePath string
-	var folder string
 	var overrideURL string
 	var overridePwd string
 
-	// Parse arguments and flags
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
 		if arg == "-h" || arg == "--help" || arg == "help" {
 			printHelp()
 			os.Exit(0)
-		} else if (arg == "-f" || arg == "--folder" || arg == "-p" || arg == "--path") && i+1 < len(args) {
-			folder = args[i+1]
-			i++
 		} else if (arg == "-u" || arg == "--url") && i+1 < len(args) {
 			overrideURL = args[i+1]
 			i++
@@ -144,8 +135,6 @@ func main() {
 		} else if !strings.HasPrefix(arg, "-") {
 			if filePath == "" {
 				filePath = arg
-			} else if folder == "" {
-				folder = arg
 			}
 		}
 	}
@@ -195,12 +184,7 @@ func main() {
 		}
 	}
 
-	cleanFolder := strings.Trim(folder, "/")
 	targetName := filepath.Base(filePath)
-	if cleanFolder != "" {
-		targetName = cleanFolder + "/" + targetName
-	}
-
 	fmt.Printf("Uploading %s to %s...\n", targetName, cdnURL)
 
 	file, err := os.Open(filePath)
@@ -213,11 +197,7 @@ func main() {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	if cleanFolder != "" {
-		_ = writer.WriteField("folder", cleanFolder)
-	}
-
-	part, err := writer.CreateFormFile("file", filepath.Base(filePath))
+	part, err := writer.CreateFormFile("file", targetName)
 	if err != nil {
 		fmt.Printf("Error creating form: %v\n", err)
 		os.Exit(1)
