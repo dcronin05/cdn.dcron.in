@@ -5,9 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>CDN — dcron.in</title>
   <link rel="stylesheet" href="style.css">
-  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
-  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link rel="icon" type="image/svg+xml" href="/branding/favicon.svg">
+  <link rel="icon" type="image/png" sizes="32x32" href="/branding/favicon-32x32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="/branding/favicon-16x16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/branding/apple-touch-icon.png">
   <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -60,13 +61,26 @@
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
             <input type="text" id="search-input" placeholder="Search assets...">
           </div>
-          <div class="filter-pills">
-            <button class="pill active" data-filter="all">All</button>
-            <button class="pill" data-filter="image">Images</button>
-            <button class="pill" data-filter="video">Videos</button>
-            <button class="pill" data-filter="doc">Docs</button>
-            <button class="pill" data-filter="archive">Archives</button>
-            <span id="asset-count" class="asset-count-text">0 files</span>
+          <div class="filter-controls">
+            <div class="filter-pills">
+              <button class="pill active" data-filter="all">All</button>
+              <button class="pill" data-filter="image">Images</button>
+              <button class="pill" data-filter="video">Videos</button>
+              <button class="pill" data-filter="doc">Docs</button>
+              <button class="pill" data-filter="archive">Archives</button>
+            </div>
+            <div class="sort-controls">
+              <span class="sort-label">Sort:</span>
+              <select id="sort-select" class="sort-dropdown">
+                <option value="date-desc">Date (Newest)</option>
+                <option value="date-asc">Date (Oldest)</option>
+                <option value="name-asc">Name (A–Z)</option>
+                <option value="name-desc">Name (Z–A)</option>
+                <option value="size-desc">Size (Largest)</option>
+                <option value="size-asc">Size (Smallest)</option>
+              </select>
+              <span id="asset-count" class="asset-count-text">0 files</span>
+            </div>
           </div>
         </div>
 

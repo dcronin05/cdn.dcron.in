@@ -278,6 +278,14 @@ a {
   border-color: var(--blue-accent);
 }
 
+.filter-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
 .filter-pills {
   display: flex;
   gap: 8px;
@@ -285,12 +293,42 @@ a {
   align-items: center;
 }
 
-.asset-count-text {
+.sort-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin-left: auto;
+}
+
+.sort-label {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-color);
+}
+
+.sort-dropdown {
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--border-color);
+  color: var(--text-light);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  padding: 4px 10px;
+  border-radius: 6px;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.2s ease;
+}
+
+.sort-dropdown:focus {
+  border-color: var(--blue-accent);
+}
+
+.asset-count-text {
   font-family: var(--font-mono);
   font-size: 0.8rem;
   color: var(--text-color);
   opacity: 0.8;
+  white-space: nowrap;
 }
 
 .pill {
@@ -311,7 +349,7 @@ a {
   color: var(--text-light);
 }
 
-/* Section & File List */
+/* Section & File List (Hide Scrollbar) */
 .section-heading {
   font-size: 1.15rem;
   font-family: var(--font-mono);
@@ -332,6 +370,15 @@ a {
   border-radius: 12px;
   font-size: 0.8rem;
   color: var(--text-color);
+}
+
+.files-container, .file-list {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.files-container::-webkit-scrollbar, .file-list::-webkit-scrollbar {
+  display: none;
 }
 
 .file-list {
@@ -646,4 +693,46 @@ a {
 
 .footer__content a:hover {
   color: var(--accent-color);
+}
+
+/* Mobile Responsiveness */
+@media (max-width: 640px) {
+  .container {
+    padding: 0 12px;
+  }
+  .header__inner {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .filter-controls {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .filter-pills {
+    overflow-x: auto;
+    white-space: nowrap;
+    padding-bottom: 4px;
+    scrollbar-width: none;
+  }
+  .filter-pills::-webkit-scrollbar {
+    display: none;
+  }
+  .sort-controls {
+    justify-content: space-between;
+    width: 100%;
+    margin-left: 0;
+  }
+  .file-item {
+    padding: 10px 12px;
+    gap: 8px;
+  }
+  .file-name {
+    max-width: 150px;
+  }
+  .preview-modal-content {
+    max-width: 95vw;
+    padding: 1rem;
+  }
 }

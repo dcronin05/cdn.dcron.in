@@ -8,6 +8,7 @@ const mainPanel = document.querySelector('.main-panel') || document.body;
 // Search & Filter Elements
 const searchInput = document.getElementById('search-input');
 const filterPills = document.querySelectorAll('.filter-pills .pill');
+const sortSelect = document.getElementById('sort-select');
 const assetCount = document.getElementById('asset-count');
 
 // Progress Bar Elements
@@ -32,11 +33,28 @@ const closePreview = document.getElementById('close-preview');
 let adminPassword = localStorage.getItem('cdn_admin_pwd') || '';
 let allFiles = [];
 let activeFilter = 'all';
+let currentSort = 'date-desc';
 let searchQuery = '';
+
+function formatBytes(bytes) {
+  if (!bytes || bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)) + ' ' + sizes[i];
+}
 
 // Initialize UI state
 if (adminPassword) {
   unlockUI();
+}
+
+// Sort listener
+if (sortSelect) {
+  sortSelect.addEventListener('change', (e) => {
+    currentSort = e.target.value;
+    renderFiles();
+  });
 }
 
 // Admin login toggle
@@ -137,6 +155,17 @@ function renderFiles() {
     return nameMatch && categoryMatch;
   });
 
+  // Sort files
+  filtered.sort((a, b) => {
+    if (currentSort === 'date-desc') return new Date(b.lastModified) - new Date(a.lastModified);
+    if (currentSort === 'date-asc') return new Date(a.lastModified) - new Date(b.lastModified);
+    if (currentSort === 'name-asc') return a.name.localeCompare(b.name);
+    if (currentSort === 'name-desc') return b.name.localeCompare(a.name);
+    if (currentSort === 'size-desc') return (b.size || 0) - (a.size || 0);
+    if (currentSort === 'size-asc') return (a.size || 0) - (b.size || 0);
+    return 0;
+  });
+
   assetCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'file' : 'files'}`;
 
   if (filtered.length === 0) {
@@ -148,7 +177,7 @@ function renderFiles() {
     const item = document.createElement('div');
     item.className = 'file-item';
     
-    const size = (file.size / 1024).toFixed(1) + ' KB';
+    const size = formatBytes(file.size);
     const date = new Date(file.lastModified).toLocaleDateString();
     const publicUrl = `${window.location.protocol}//${window.location.host}/${file.name}`;
     
