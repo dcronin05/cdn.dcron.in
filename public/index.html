@@ -46,13 +46,33 @@
             <p>Drag and drop files here</p>
             <span class="subtext">or click to browse</span>
           </div>
+          <div class="progress-container hidden" id="progress-container">
+            <div class="progress-bar-track">
+              <div class="progress-bar-fill" id="progress-bar"></div>
+            </div>
+            <span class="progress-text" id="progress-text">Uploading 0%</span>
+          </div>
           <input type="file" id="file-input" multiple style="display: none;">
         </div>
 
+        <div class="filter-bar">
+          <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+            <input type="text" id="search-input" placeholder="Search assets...">
+          </div>
+          <div class="filter-pills">
+            <button class="pill active" data-filter="all">All</button>
+            <button class="pill" data-filter="image">Images</button>
+            <button class="pill" data-filter="video">Videos</button>
+            <button class="pill" data-filter="doc">Docs</button>
+            <button class="pill" data-filter="archive">Archives</button>
+          </div>
+        </div>
+
         <div class="files-container">
-          <h3 class="section-heading"><i class="fa-solid fa-folder-open"></i> Uploaded Assets</h3>
+          <h3 class="section-heading"><i class="fa-solid fa-folder-open"></i> Uploaded Assets <span id="asset-count" class="badge">0</span></h3>
           <div class="file-list" id="file-list">
-            <!-- Files will be dynamically injected here -->
+            <!-- Files dynamically injected here -->
           </div>
         </div>
       </main>
@@ -69,6 +89,24 @@
     </footer>
   </div>
 
+  <!-- Lightbox Preview Modal -->
+  <div id="preview-modal" class="modal-overlay hidden">
+    <div class="modal-content preview-modal-content">
+      <div class="preview-header">
+        <h3 id="preview-title">Asset Preview</h3>
+        <button class="btn-close" id="close-preview"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <div class="preview-body" id="preview-body">
+        <!-- Media preview injected here -->
+      </div>
+      <div class="preview-footer">
+        <a id="preview-download" href="#" target="_blank" class="btn btn-primary" download><i class="fa-solid fa-download"></i> Download</a>
+        <button id="preview-copy" class="btn btn-secondary"><i class="fa-solid fa-link"></i> Copy URL</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Login Modal -->
   <div id="login-modal" class="modal-overlay hidden">
     <div class="modal-content">
       <h2>Admin Login</h2>
