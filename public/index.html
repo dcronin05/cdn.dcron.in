@@ -69,18 +69,21 @@
               <button class="pill" data-filter="doc">Docs</button>
               <button class="pill" data-filter="archive">Archives</button>
             </div>
-            <div class="sort-controls">
-              <span class="sort-label">Sort:</span>
-              <select id="sort-select" class="sort-dropdown">
-                <option value="date-desc">Date (Newest)</option>
-                <option value="date-asc">Date (Oldest)</option>
-                <option value="name-asc">Name (A–Z)</option>
-                <option value="name-desc">Name (Z–A)</option>
-                <option value="size-desc">Size (Largest)</option>
-                <option value="size-asc">Size (Smallest)</option>
-              </select>
-              <span id="asset-count" class="asset-count-text">0 files</span>
-            </div>
+            <span id="asset-count" class="asset-count-text">0 files</span>
+          </div>
+        </div>
+
+        <div class="pseudo-header-bar">
+          <button class="pseudo-col sort-col" data-sort="name">
+            <span>Name</span> <i class="sort-icon fa-solid fa-sort"></i>
+          </button>
+          <div class="pseudo-right">
+            <button class="pseudo-col sort-col active" data-sort="date">
+              <span>Date</span> <i class="sort-icon fa-solid fa-arrow-down"></i>
+            </button>
+            <button class="pseudo-col sort-col" data-sort="size">
+              <span>Size</span> <i class="sort-icon fa-solid fa-sort"></i>
+            </button>
           </div>
         </div>
 
@@ -116,6 +119,7 @@
       <div class="preview-footer">
         <a id="preview-download" href="#" target="_blank" class="btn btn-primary" download><i class="fa-solid fa-download"></i> Download</a>
         <button id="preview-copy" class="btn btn-secondary"><i class="fa-solid fa-link"></i> Copy URL</button>
+        <button id="preview-share" class="btn btn-secondary"><i class="fa-solid fa-share-nodes"></i> Share Shortlink</button>
       </div>
     </div>
   </div>

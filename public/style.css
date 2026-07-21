@@ -372,6 +372,50 @@ a {
   color: var(--text-color);
 }
 
+/* Pseudo-Column Header Bar */
+.pseudo-header-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 0.75rem 0.5rem 0.75rem;
+  margin-bottom: 0.5rem;
+  border-bottom: 1px dashed var(--border-color);
+}
+
+.pseudo-col {
+  background: transparent;
+  border: none;
+  color: var(--text-color);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  opacity: 0.7;
+}
+
+.pseudo-col:hover {
+  opacity: 1;
+  color: var(--text-light);
+}
+
+.pseudo-col.active {
+  opacity: 1;
+  color: var(--blue-accent);
+  font-weight: 600;
+}
+
+.pseudo-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+/* File List (Natural Height for Page Scrolling) */
 .files-container, .file-list {
   scrollbar-width: none;
   -ms-overflow-style: none;
@@ -385,21 +429,6 @@ a {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
-  max-height: 400px;
-  overflow-y: auto;
-  padding-right: 0.5rem;
-}
-
-.file-list::-webkit-scrollbar {
-  width: 6px;
-}
-.file-list::-webkit-scrollbar-track {
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 4px;
-}
-.file-list::-webkit-scrollbar-thumb {
-  background: var(--border-color);
-  border-radius: 4px;
 }
 
 .file-item {

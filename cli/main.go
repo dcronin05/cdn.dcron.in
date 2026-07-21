@@ -94,7 +94,7 @@ func copyToClipboard(text string) {
 	fmt.Println("📋 Direct link copied to clipboard!")
 }
 
-var Version = "v1.2.0"
+var Version = "v1.4.0"
 
 func printHelp() {
 	fmt.Printf(`dcron.in CDN CLI Upload Tool %s

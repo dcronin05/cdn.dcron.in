@@ -30,10 +30,14 @@ const previewDownload = document.getElementById('preview-download');
 const previewCopy = document.getElementById('preview-copy');
 const closePreview = document.getElementById('close-preview');
 
+const previewShare = document.getElementById('preview-share');
+const sortCols = document.querySelectorAll('.sort-col');
+
 let adminPassword = localStorage.getItem('cdn_admin_pwd') || '';
 let allFiles = [];
 let activeFilter = 'all';
-let currentSort = 'date-desc';
+let currentSortKey = 'date';
+let currentSortDir = 'desc';
 let searchQuery = '';
 
 function formatBytes(bytes) {
@@ -49,13 +53,32 @@ if (adminPassword) {
   unlockUI();
 }
 
-// Sort listener
-if (sortSelect) {
-  sortSelect.addEventListener('change', (e) => {
-    currentSort = e.target.value;
+// Pseudo-column header sort toggle listeners
+sortCols.forEach(col => {
+  col.addEventListener('click', () => {
+    const key = col.dataset.sort;
+    if (currentSortKey === key) {
+      currentSortDir = currentSortDir === 'desc' ? 'asc' : 'desc';
+    } else {
+      currentSortKey = key;
+      currentSortDir = (key === 'name') ? 'asc' : 'desc';
+    }
+
+    sortCols.forEach(c => {
+      c.classList.remove('active');
+      const icon = c.querySelector('.sort-icon');
+      if (icon) icon.className = 'sort-icon fa-solid fa-sort';
+    });
+
+    col.classList.add('active');
+    const activeIcon = col.querySelector('.sort-icon');
+    if (activeIcon) {
+      activeIcon.className = `sort-icon fa-solid ${currentSortDir === 'desc' ? 'fa-arrow-down' : 'fa-arrow-up'}`;
+    }
+
     renderFiles();
   });
-}
+});
 
 // Admin login toggle
 adminBtn.addEventListener('click', () => {
@@ -157,12 +180,18 @@ function renderFiles() {
 
   // Sort files
   filtered.sort((a, b) => {
-    if (currentSort === 'date-desc') return new Date(b.lastModified) - new Date(a.lastModified);
-    if (currentSort === 'date-asc') return new Date(a.lastModified) - new Date(b.lastModified);
-    if (currentSort === 'name-asc') return a.name.localeCompare(b.name);
-    if (currentSort === 'name-desc') return b.name.localeCompare(a.name);
-    if (currentSort === 'size-desc') return (b.size || 0) - (a.size || 0);
-    if (currentSort === 'size-asc') return (a.size || 0) - (b.size || 0);
+    if (currentSortKey === 'date') {
+      const diff = new Date(b.lastModified) - new Date(a.lastModified);
+      return currentSortDir === 'desc' ? diff : -diff;
+    }
+    if (currentSortKey === 'name') {
+      const diff = a.name.localeCompare(b.name);
+      return currentSortDir === 'asc' ? diff : -diff;
+    }
+    if (currentSortKey === 'size') {
+      const diff = (b.size || 0) - (a.size || 0);
+      return currentSortDir === 'desc' ? diff : -diff;
+    }
     return 0;
   });
 
@@ -180,6 +209,7 @@ function renderFiles() {
     const size = formatBytes(file.size);
     const date = new Date(file.lastModified).toLocaleDateString();
     const publicUrl = `${window.location.protocol}//${window.location.host}/${file.name}`;
+    const shortUrl = file.shortUrl || publicUrl;
     
     const category = getCategory(file.name);
     let icon = 'fa-file';
@@ -189,7 +219,7 @@ function renderFiles() {
     else if (category === 'archive') icon = 'fa-file-zipper';
 
     item.innerHTML = `
-      <div class="file-info" onclick="openPreview('${file.name}', '${publicUrl}', '${category}')">
+      <div class="file-info" onclick="openPreview('${file.name}', '${publicUrl}', '${category}', '${shortUrl}')">
         <i class="fa-solid ${icon} file-icon"></i>
         <div class="file-details">
           <span class="file-name" title="${file.name}">${file.name}</span>
@@ -200,7 +230,7 @@ function renderFiles() {
         <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${publicUrl}')" title="Copy Direct URL">
           <i class="fa-solid fa-link"></i>
         </button>
-        <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${file.shortUrl || publicUrl}')" title="Copy Shortlink (${file.shortUrl || publicUrl})">
+        <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${shortUrl}')" title="Copy Shortlink (${shortUrl})">
           <i class="fa-solid fa-share-nodes"></i>
         </button>
         <button class="btn btn-delete" onclick="event.stopPropagation(); deleteFile('${file.name}')" title="Delete">
@@ -220,10 +250,13 @@ function getCategory(filename) {
   return 'other';
 }
 
-function openPreview(name, url, category) {
+function openPreview(name, url, category, shortUrl) {
   previewTitle.textContent = name;
   previewDownload.href = url;
   previewCopy.onclick = () => copyToClipboard(url);
+  if (previewShare) {
+    previewShare.onclick = () => copyToClipboard(shortUrl || url);
+  }
 
   previewBody.innerHTML = '';
   if (category === 'image') {
