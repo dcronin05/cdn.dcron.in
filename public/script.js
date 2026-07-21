@@ -3,7 +3,7 @@ const fileInput = document.getElementById('file-input');
 const fileList = document.getElementById('file-list');
 const toast = document.getElementById('toast');
 const adminBtn = document.getElementById('admin-btn');
-const glassPanel = document.querySelector('.glass-panel');
+const mainPanel = document.querySelector('.main-panel') || document.body;
 
 // Modal Elements
 const loginModal = document.getElementById('login-modal');
@@ -55,14 +55,14 @@ function unlockUI() {
   dropZone.classList.remove('hidden');
   adminBtn.classList.add('unlocked');
   adminBtn.innerHTML = '<i class="fa-solid fa-lock-open"></i>';
-  glassPanel.classList.add('admin-mode');
+  mainPanel.classList.add('admin-mode');
 }
 
 function lockUI() {
   dropZone.classList.add('hidden');
   adminBtn.classList.remove('unlocked');
   adminBtn.innerHTML = '<i class="fa-solid fa-lock"></i>';
-  glassPanel.classList.remove('admin-mode');
+  mainPanel.classList.remove('admin-mode');
 }
 
 // Initial fetch

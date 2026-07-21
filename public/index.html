@@ -3,41 +3,76 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CDN | Drag & Drop</title>
+  <title>CDN — dcron.in</title>
   <link rel="stylesheet" href="style.css">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
 <body>
-  <div class="glass-panel">
-    <header>
-      <h1><i class="fa-solid fa-cloud-arrow-up"></i> Antigravity CDN</h1>
-      <p class="subtitle">Secure Drop Zone & Asset Manager</p>
-      <button id="admin-btn" class="btn btn-admin" title="Admin Login"><i class="fa-solid fa-lock"></i></button>
+  <div class="container">
+    <header class="header">
+      <div class="header__inner">
+        <a href="https://dcron.in/" class="logo-link">
+          <div class="logo">
+            <span class="logo__mark">&gt;</span>
+            <span class="logo__text">dcron.in <span class="logo__sub">/ cdn</span></span>
+            <span class="logo__cursor"></span>
+          </div>
+        </a>
+        <nav class="menu">
+          <ul class="menu__inner">
+            <li><a href="https://dcron.in/">&lt; Home</a></li>
+            <li><a href="https://docs.dcron.in/" target="_blank">Docs</a></li>
+            <li><a href="https://affine.dcron.in/" target="_blank">Affine</a></li>
+            <li><button id="admin-btn" class="btn-admin-nav" title="Admin Login"><i class="fa-solid fa-lock"></i></button></li>
+          </ul>
+        </nav>
+      </div>
     </header>
 
-    <div class="upload-zone hidden" id="drop-zone">
-      <div class="upload-content">
-        <i class="fa-solid fa-arrow-up-from-bracket upload-icon"></i>
-        <p>Drag and drop files here</p>
-        <span class="subtext">or click to browse</span>
-      </div>
-      <input type="file" id="file-input" multiple style="display: none;">
+    <div class="content">
+      <main class="main-panel">
+        <div class="app-header">
+          <h2><i class="fa-solid fa-hard-drive"></i> Asset Manager & Drop Zone</h2>
+          <p class="subtitle">Public Object Storage & Asset CDN</p>
+        </div>
+
+        <div class="upload-zone hidden" id="drop-zone">
+          <div class="upload-content">
+            <i class="fa-solid fa-arrow-up-from-bracket upload-icon"></i>
+            <p>Drag and drop files here</p>
+            <span class="subtext">or click to browse</span>
+          </div>
+          <input type="file" id="file-input" multiple style="display: none;">
+        </div>
+
+        <div class="files-container">
+          <h3 class="section-heading"><i class="fa-solid fa-folder-open"></i> Uploaded Assets</h3>
+          <div class="file-list" id="file-list">
+            <!-- Files will be dynamically injected here -->
+          </div>
+        </div>
+      </main>
     </div>
 
-    <div class="files-container">
-      <h2><i class="fa-solid fa-folder-open"></i> Uploaded Assets</h2>
-      <div class="file-list" id="file-list">
-        <!-- Files will be dynamically injected here -->
+    <footer class="footer">
+      <div class="footer__inner">
+        <div class="footer__content">
+          <span>&copy; 2026 <a href="https://dcron.in/">Daniel Cronin</a></span>
+          <span>•</span>
+          <span><a href="https://dcron.in/">dcron.in CDN</a></span>
+        </div>
       </div>
-    </div>
+    </footer>
   </div>
 
   <div id="login-modal" class="modal-overlay hidden">
-    <div class="glass-panel modal-content">
+    <div class="modal-content">
       <h2>Admin Login</h2>
       <form id="login-form">
-        <!-- Hidden username for password managers -->
         <input type="text" name="username" value="admin" autocomplete="username" style="display:none">
         
         <div class="input-group">
