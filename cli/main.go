@@ -94,8 +94,10 @@ func copyToClipboard(text string) {
 	fmt.Println("📋 Direct link copied to clipboard!")
 }
 
+var Version = "v1.2.0"
+
 func printHelp() {
-	fmt.Println(`dcron.in CDN CLI Upload Tool v1.1.1
+	fmt.Printf(`dcron.in CDN CLI Upload Tool %s
 
 USAGE:
   cdn <file-path>
@@ -108,7 +110,9 @@ EXAMPLES:
 FLAGS:
   -u, --url <server-url>              Custom CDN Server URL
   -w, --password <password>           Custom CDN Admin Password
-  -h, --help                          Display CLI documentation and usage`)
+  -v, --version                       Display CLI version
+  -h, --help                          Display CLI documentation and usage
+`, Version)
 }
 
 func main() {
@@ -126,6 +130,9 @@ func main() {
 		arg := args[i]
 		if arg == "-h" || arg == "--help" || arg == "help" {
 			printHelp()
+			os.Exit(0)
+		} else if arg == "-v" || arg == "--version" || arg == "version" {
+			fmt.Printf("cdn %s\n", Version)
 			os.Exit(0)
 		} else if (arg == "-u" || arg == "--url") && i+1 < len(args) {
 			overrideURL = args[i+1]
