@@ -100,6 +100,7 @@ app.delete('/api/files/:filename', requireAuth, (req, res) => {
   });
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
   console.log(`Bespoke CDN UI listening on port ${port}`);
 });
+server.setTimeout(0); // Disable request timeout for multi-GB uploads
