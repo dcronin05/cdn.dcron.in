@@ -1,0 +1,72 @@
+#!/usr/bin/env sh
+set -e
+
+CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/cdn"
+CONFIG_FILE="$CONFIG_DIR/config"
+
+# Load config if exists
+if [ -f "$CONFIG_FILE" ]; then
+    . "$CONFIG_FILE"
+fi
+
+# Prompt for config on first run or if missing
+if [ -z "$CDN_URL" ] || [ -z "$CDN_PASSWORD" ]; then
+    echo "=== dcron.in CDN CLI Setup ==="
+    printf "CDN Server URL [https://cdn.dcron.in]: "
+    read -r INPUT_URL
+    CDN_URL="${INPUT_URL:-https://cdn.dcron.in}"
+    printf "CDN Admin Password: "
+    stty -echo
+    read -r CDN_PASSWORD
+    stty echo
+    echo ""
+    
+    mkdir -p "$CONFIG_DIR"
+    printf "CDN_URL=\"%s\"\nCDN_PASSWORD=\"%s\"\n" "$CDN_URL" "$CDN_PASSWORD" > "$CONFIG_FILE"
+    chmod 600 "$CONFIG_FILE"
+    echo "✔ Config saved to $CONFIG_FILE"
+    echo ""
+fi
+
+if [ $# -eq 0 ]; then
+    echo "Usage: cdn <file-path>"
+    echo "Example: cdn photo.jpg"
+    exit 1
+fi
+
+FILE="$1"
+
+if [ ! -f "$FILE" ]; then
+    echo "Error: File '$FILE' not found."
+    exit 1
+fi
+
+FILENAME=$(basename "$FILE")
+echo "Uploading $FILENAME to $CDN_URL..."
+
+HTTP_STATUS=$(curl -s -o /tmp/cdn_res.json -w "%{http_code}" \
+  -H "Authorization: Bearer $CDN_PASSWORD" \
+  -F "file=@$FILE" \
+  "$CDN_URL/api/upload")
+
+if [ "$HTTP_STATUS" -ne 200 ]; then
+    echo "❌ Upload failed (HTTP $HTTP_STATUS)"
+    cat /tmp/cdn_res.json 2>/dev/null || true
+    echo ""
+    exit 1
+fi
+
+PUBLIC_URL="$CDN_URL/$FILENAME"
+echo "✔ Successfully uploaded: $PUBLIC_URL"
+
+# Copy to clipboard if utility exists
+if command -v pbcopy >/dev/null 2>&1; then
+    printf "%s" "$PUBLIC_URL" | pbcopy
+    echo "📋 Direct link copied to macOS clipboard!"
+elif command -v wl-copy >/dev/null 2>&1; then
+    printf "%s" "$PUBLIC_URL" | wl-copy
+    echo "📋 Direct link copied to Wayland clipboard!"
+elif command -v xclip >/dev/null 2>&1; then
+    printf "%s" "$PUBLIC_URL" | xclip -selection clipboard
+    echo "📋 Direct link copied to X11 clipboard!"
+fi
