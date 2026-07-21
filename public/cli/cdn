@@ -44,12 +44,14 @@ fi
 FILENAME=$(basename "$FILE")
 echo "Uploading $FILENAME to $CDN_URL..."
 
-HTTP_STATUS=$(curl -s -o /tmp/cdn_res.json -w "%{http_code}" \
+# Added -# (--progress-bar) for visual terminal upload progress tracking
+HTTP_STATUS=$(curl -# -o /tmp/cdn_res.json -w "%{http_code}" \
   -H "Authorization: Bearer $CDN_PASSWORD" \
   -F "file=@$FILE" \
   "$CDN_URL/api/upload")
 
 if [ "$HTTP_STATUS" -ne 200 ]; then
+    echo ""
     echo "❌ Upload failed (HTTP $HTTP_STATUS)"
     cat /tmp/cdn_res.json 2>/dev/null || true
     echo ""
@@ -57,6 +59,7 @@ if [ "$HTTP_STATUS" -ne 200 ]; then
 fi
 
 PUBLIC_URL="$CDN_URL/$FILENAME"
+echo ""
 echo "✔ Successfully uploaded: $PUBLIC_URL"
 
 # Copy to clipboard if utility exists
