@@ -137,7 +137,7 @@ function renderFiles() {
     return nameMatch && categoryMatch;
   });
 
-  assetCount.textContent = filtered.length;
+  assetCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'file' : 'files'}`;
 
   if (filtered.length === 0) {
     fileList.innerHTML = '<div style="text-align:center;color:var(--text-color);padding:2rem;font-family:var(--font-mono);">No matching assets found.</div>';

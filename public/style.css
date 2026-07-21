@@ -282,6 +282,15 @@ a {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.asset-count-text {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--text-color);
+  opacity: 0.8;
 }
 
 .pill {
