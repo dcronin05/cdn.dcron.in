@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"mime/multipart"
@@ -234,15 +235,28 @@ func main() {
 
 	fmt.Println()
 
+	respBody, _ := io.ReadAll(resp.Body)
 	if resp.StatusCode != http.StatusOK {
-		respBody, _ := io.ReadAll(resp.Body)
 		fmt.Printf("❌ Upload failed (HTTP %d): %s\n", resp.StatusCode, string(respBody))
 		os.Exit(1)
 	}
 
+	var resData struct {
+		Success   bool   `json:"success"`
+		FileName  string `json:"fileName"`
+		ShortCode string `json:"shortCode"`
+		ShortUrl  string `json:"shortUrl"`
+	}
+	_ = json.Unmarshal(respBody, &resData)
+
 	publicURL := fmt.Sprintf("%s/%s", strings.TrimRight(cdnURL, "/"), targetName)
-	fmt.Printf("✔ Successfully uploaded: %s\n", publicURL)
-	copyToClipboard(publicURL)
+	fmt.Printf("✔ Direct URL: %s\n", publicURL)
+	if resData.ShortUrl != "" {
+		fmt.Printf("🔗 Shortlink:  %s\n", resData.ShortUrl)
+		copyToClipboard(resData.ShortUrl)
+	} else {
+		copyToClipboard(publicURL)
+	}
 }
 
 func termReadPassword() ([]byte, error) {

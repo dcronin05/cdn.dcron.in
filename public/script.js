@@ -168,8 +168,11 @@ function renderFiles() {
         </div>
       </div>
       <div class="file-actions">
-        <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${publicUrl}')" title="Copy URL">
+        <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${publicUrl}')" title="Copy Direct URL">
           <i class="fa-solid fa-link"></i>
+        </button>
+        <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${file.shortUrl || publicUrl}')" title="Copy Shortlink (${file.shortUrl || publicUrl})">
+          <i class="fa-solid fa-share-nodes"></i>
         </button>
         <button class="btn btn-delete" onclick="event.stopPropagation(); deleteFile('${file.name}')" title="Delete">
           <i class="fa-solid fa-trash-can"></i>
