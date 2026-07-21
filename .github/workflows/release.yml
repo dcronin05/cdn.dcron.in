@@ -1,0 +1,45 @@
+name: Build and Release CLI Binaries
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    name: Build & Release Binary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build macOS ARM64 (Apple Silicon)
+        run: GOOS=darwin GOARCH=arm64 go build -ldflags="-s -w" -o dist/cdn-darwin-arm64 cli/main.go
+
+      - name: Build macOS AMD64 (Intel)
+        run: GOOS=darwin GOARCH=amd64 go build -ldflags="-s -w" -o dist/cdn-darwin-amd64 cli/main.go
+
+      - name: Build Linux AMD64 (x86_64)
+        run: GOOS=linux GOARCH=amd64 go build -ldflags="-s -w" -o dist/cdn-linux-amd64 cli/main.go
+
+      - name: Build Linux ARM64
+        run: GOOS=linux GOARCH=arm64 go build -ldflags="-s -w" -o dist/cdn-linux-arm64 cli/main.go
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/cdn-darwin-arm64
+            dist/cdn-darwin-amd64
+            dist/cdn-linux-amd64
+            dist/cdn-linux-arm64
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
