@@ -29,3 +29,17 @@ jobs:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository }}:latest
+
+      - name: Announce Push on Bluesky
+        run: |
+          curl -k -X POST https://webhook.dcron.in/webhook \
+            -H "Content-Type: application/json" \
+            -H "x-webhook-secret: ezp5-yend-wmfx-yyjv" \
+            -d '{
+              "repository": { "name": "${{ github.event.repository.name }}" },
+              "commits": [{
+                "message": "${{ github.event.head_commit.message }}",
+                "id": "${{ github.sha }}",
+                "url": "${{ github.event.head_commit.url }}"
+              }]
+            }'
