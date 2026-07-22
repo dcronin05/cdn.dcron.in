@@ -389,3 +389,4 @@ func termReadPassword() ([]byte, error) {
 	_, err := fmt.Scanln(&pwd)
 	return []byte(pwd), err
 }
+
