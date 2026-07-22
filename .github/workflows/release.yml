@@ -43,3 +43,17 @@ jobs:
             dist/cdn-linux-arm64
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Announce Release on Bluesky & Discord
+        run: |
+          curl -k -X POST https://webhook.dcron.in/webhook \
+            -H "Content-Type: application/json" \
+            -H "x-webhook-secret: ezp5-yend-wmfx-yyjv" \
+            -d '{
+              "repository": { "name": "${{ github.event.repository.name }}" },
+              "action": "published",
+              "release": {
+                "tag_name": "${{ github.ref_name }}",
+                "html_url": "https://github.com/${{ github.repository }}/releases/tag/${{ github.ref_name }}"
+              }
+            }'
