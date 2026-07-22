@@ -207,7 +207,7 @@ function renderFiles() {
     item.className = 'file-item';
     
     const size = formatBytes(file.size);
-    const date = new Date(file.lastModified).toLocaleDateString();
+    const date = new Date(file.lastModified).toLocaleString();
     const publicUrl = `${window.location.protocol}//${window.location.host}/${file.name}`;
     const shortUrl = file.shortUrl || publicUrl;
     
