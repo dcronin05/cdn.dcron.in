@@ -15,7 +15,7 @@ const minioClient = new Minio.Client({
   secretKey: process.env.MINIO_ROOT_PASSWORD
 });
 
-const bucketName = 'cdn';
+const bucketName = 'public';
 const adminPassword = process.env.CDN_ADMIN_PASSWORD || 'fallback_secret';
 const SHORTLINKS_FILE = '_shortlinks.json';
 
