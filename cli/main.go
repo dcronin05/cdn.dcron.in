@@ -16,6 +16,10 @@ import (
 	"syscall"
 )
 
+// ProgressReader is a custom io.Reader that tracks the number of bytes read
+// and prints a neat CLI progress bar. It intercepts the Read calls as the HTTP
+// client reads the file body.
+
 type ProgressReader struct {
 	reader io.Reader
 	total  int64
@@ -96,6 +100,110 @@ func copyToClipboard(text string) {
 
 var Version = "v1.4.0"
 
+// updateSelf checks the GitHub API for the latest release, downloads the appropriate
+// binary for the user's OS and architecture, and seamlessly replaces the running executable.
+func updateSelf() {
+	fmt.Println("Checking for updates...")
+	resp, err := http.Get("https://api.github.com/repos/dcronin05/cdn.dcron.in/releases/latest")
+	if err != nil {
+		fmt.Printf("❌ Failed to check for updates: %v\n", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		fmt.Printf("❌ GitHub API returned %d\n", resp.StatusCode)
+		os.Exit(1)
+	}
+
+	var release struct {
+		TagName string `json:"tag_name"`
+		Assets  []struct {
+			Name               string `json:"name"`
+			BrowserDownloadURL string `json:"browser_download_url"`
+		} `json:"assets"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
+		fmt.Printf("❌ Failed to parse release data: %v\n", err)
+		os.Exit(1)
+	}
+
+	if release.TagName == Version {
+		fmt.Println("✔ You are already running the latest version:", Version)
+		os.Exit(0)
+	}
+
+	var downloadURL string
+	targetAsset := fmt.Sprintf("cdn-%s-%s", runtime.GOOS, runtime.GOARCH)
+	if targetAsset == "cdn-windows-amd64" {
+		targetAsset += ".exe"
+	}
+
+	for _, asset := range release.Assets {
+		if asset.Name == targetAsset {
+			downloadURL = asset.BrowserDownloadURL
+			break
+		}
+	}
+
+	if downloadURL == "" {
+		fmt.Printf("❌ No precompiled binary found for %s\n", targetAsset)
+		os.Exit(1)
+	}
+
+	fmt.Printf("Downloading %s (%s)...\n", release.TagName, targetAsset)
+
+	exePath, err := os.Executable()
+	if err != nil {
+		fmt.Printf("❌ Failed to get executable path: %v\n", err)
+		os.Exit(1)
+	}
+
+	dlResp, err := http.Get(downloadURL)
+	if err != nil {
+		fmt.Printf("❌ Failed to download update: %v\n", err)
+		os.Exit(1)
+	}
+	defer dlResp.Body.Close()
+
+	if dlResp.StatusCode != http.StatusOK {
+		fmt.Printf("❌ Download failed with HTTP %d\n", dlResp.StatusCode)
+		os.Exit(1)
+	}
+
+	tmpFile := exePath + ".new"
+	out, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
+	if err != nil {
+		fmt.Printf("❌ Failed to create temp file: %v\n", err)
+		os.Exit(1)
+	}
+
+	progressReader := &ProgressReader{
+		reader: dlResp.Body,
+		total:  dlResp.ContentLength,
+	}
+
+	_, err = io.Copy(out, progressReader)
+	out.Close() // Close immediately after copy before rename
+
+	if err != nil {
+		os.Remove(tmpFile)
+		fmt.Printf("\n❌ Error downloading file: %v\n", err)
+		os.Exit(1)
+	}
+	fmt.Println()
+
+	if err := os.Rename(tmpFile, exePath); err != nil {
+		os.Remove(tmpFile)
+		fmt.Printf("❌ Failed to replace executable: %v\n", err)
+		os.Exit(1)
+	}
+
+	fmt.Printf("✔ Successfully updated to %s!\n", release.TagName)
+	os.Exit(0)
+}
+
 func printHelp() {
 	fmt.Printf(`dcron.in CDN CLI Upload Tool %s
 
@@ -111,6 +219,7 @@ FLAGS:
   -u, --url <server-url>              Custom CDN Server URL
   -w, --password <password>           Custom CDN Admin Password
   -v, --version                       Display CLI version
+  -U, --update                        Update CLI to the latest version
   -h, --help                          Display CLI documentation and usage
 `, Version)
 }
@@ -140,6 +249,8 @@ func main() {
 		} else if (arg == "-w" || arg == "--password") && i+1 < len(args) {
 			overridePwd = args[i+1]
 			i++
+		} else if arg == "-U" || arg == "--update" || arg == "update" {
+			updateSelf()
 		} else if !strings.HasPrefix(arg, "-") {
 			if filePath == "" {
 				filePath = arg

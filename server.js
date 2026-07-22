@@ -1,3 +1,13 @@
+/**
+ * dcron.in CDN Server (Backend)
+ * 
+ * This Express.js server acts as the backend for the bespoke CDN interface.
+ * It interfaces directly with the MinIO S3-compatible storage backend to handle
+ * file uploads, deletions, and dynamic shortlink generation.
+ * 
+ * Shortlinks are stored in a hidden `_shortlinks.json` file directly within the 
+ * MinIO public bucket to maintain statelessness across container restarts.
+ */
 const express = require('express');
 const multer = require('multer');
 const Minio = require('minio');
@@ -22,7 +32,12 @@ const SHORTLINKS_FILE = '_shortlinks.json';
 let shortlinks = {};     // shortCode -> fileName
 let fileToShortcode = {}; // fileName -> shortCode
 
-// Helper: Generate random 6-character shortcode
+/**
+ * Helper: Generate random 6-character shortcode.
+ * Used for creating unique `dcron.in/s/XXXXXX` URLs.
+ * 
+ * @returns {string} A random 6-character alphanumeric string.
+ */
 function generateShortCode() {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let result = '';
@@ -97,7 +112,16 @@ const upload = multer({ dest: 'uploads/' });
 app.use(express.static('public'));
 app.use(express.json());
 
-// Middleware to check Admin Password
+/**
+ * Authentication Middleware
+ * 
+ * Protects administrative API routes (Upload/Delete).
+ * Checks for the `Bearer <adminPassword>` token in the Authorization header.
+ * 
+ * @param {Object} req - Express Request
+ * @param {Object} res - Express Response
+ * @param {Function} next - Express Next middleware callback
+ */
 function requireAuth(req, res, next) {
     const authHeader = req.headers['authorization'];
     if (authHeader && authHeader === `Bearer ${adminPassword}`) {

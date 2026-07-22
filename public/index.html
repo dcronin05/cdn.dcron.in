@@ -47,12 +47,14 @@
     </header>
 
     <div class="content">
+      <!-- Main Content -->
       <main class="main-panel">
         <div class="app-header">
           <h2><i class="fa-solid fa-hard-drive"></i> Asset Manager & Drop Zone</h2>
           <p class="subtitle">Public Object Storage & Asset CDN</p>
         </div>
 
+        <!-- Dropzone -->
         <div class="upload-zone hidden" id="drop-zone">
           <div class="upload-content">
             <i class="fa-solid fa-arrow-up-from-bracket upload-icon"></i>
@@ -68,6 +70,7 @@
           <input type="file" id="file-input" multiple style="display: none;">
         </div>
 
+        <!-- Search Bar -->
         <div class="filter-bar">
           <div class="search-box">
             <i class="fa-solid fa-magnifying-glass search-icon"></i>
@@ -99,6 +102,7 @@
           </div>
         </div>
 
+        <!-- Sidebar (List of assets) -->
         <div class="files-container">
           <div class="file-list" id="file-list">
             <!-- Files dynamically injected here -->
@@ -118,6 +122,7 @@
     </footer>
   </div>
 
+  <!-- Modals -->
   <!-- Lightbox Preview Modal -->
   <div id="preview-modal" class="modal-overlay hidden">
     <div class="modal-content preview-modal-content">
