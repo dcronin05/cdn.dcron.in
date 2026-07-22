@@ -24,3 +24,6 @@ Comprehensive documentation can be found in the `docs/` directory:
 - [Architecture Overview](docs/Architecture.md)
 - [CLI Usage Guide](docs/CLI-Usage.md)
 - [REST API Reference](docs/API.md)
+
+## Architecture Note
+This project relies on MinIO as its primary backing storage.
