@@ -402,3 +402,34 @@ function showToast(message) {
     toast.classList.remove('show');
   }, 3000);
 }
+
+// Paste to upload support
+document.addEventListener('paste', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    return; // Let normal pasting happen in inputs
+  }
+  
+  const items = (e.clipboardData || window.clipboardData).items;
+  const files = [];
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.kind === 'file') {
+      const file = item.getAsFile();
+      if (file) {
+        if (file.type.startsWith('image/')) {
+          const ext = file.type.split('/')[1] || 'png';
+          const newName = `clipboard-${Date.now()}.${ext}`;
+          const renamedFile = new File([file], newName, { type: file.type });
+          files.push(renamedFile);
+        } else {
+          files.push(file);
+        }
+      }
+    }
+  }
+  
+  if (files.length > 0) {
+    e.preventDefault();
+    handleFiles(files);
+  }
+});
