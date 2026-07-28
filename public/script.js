@@ -227,6 +227,9 @@ function renderFiles() {
         </div>
       </div>
       <div class="file-actions">
+        <a class="btn btn-copy" href="${publicUrl}" target="_blank" download title="Download" onclick="event.stopPropagation();">
+          <i class="fa-solid fa-download"></i>
+        </a>
         <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${publicUrl}')" title="Copy Direct URL">
           <i class="fa-solid fa-link"></i>
         </button>
