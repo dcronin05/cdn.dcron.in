@@ -218,9 +218,14 @@ function renderFiles() {
     else if (category === 'doc') icon = 'fa-file-lines';
     else if (category === 'archive') icon = 'fa-file-zipper';
 
+    let iconHtml = `<i class="fa-solid ${icon} file-icon"></i>`;
+    if (category === 'image') {
+      iconHtml = `<div class="file-thumb-container"><img src="${publicUrl}" class="file-thumb" alt="${file.name}" loading="lazy"></div>`;
+    }
+
     item.innerHTML = `
       <div class="file-info" onclick="openPreview('${file.name}', '${publicUrl}', '${category}', '${shortUrl}')">
-        <i class="fa-solid ${icon} file-icon"></i>
+        ${iconHtml}
         <div class="file-details">
           <span class="file-name" title="${file.name}">${file.name}</span>
           <span class="file-meta">${size} • ${date}</span>

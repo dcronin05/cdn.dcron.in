@@ -459,6 +459,27 @@ a {
 .file-icon {
   color: var(--blue-accent);
   font-size: 1.2rem;
+  width: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.file-thumb-container {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.file-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 6px;
+  background-color: rgba(0, 0, 0, 0.2);
 }
 
 .file-details {
