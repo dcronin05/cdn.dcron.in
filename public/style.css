@@ -211,6 +211,20 @@ a {
   font-size: 0.85rem;
 }
 
+.mobile-paste-container {
+  margin-top: 1.25rem;
+}
+
+.paste-btn {
+  width: auto;
+  padding: 0.5rem 1rem;
+  margin: 0 auto;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  z-index: 10;
+  position: relative;
+}
+
 .progress-container {
   margin-top: 1rem;
   width: 100%;

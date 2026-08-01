@@ -300,10 +300,47 @@ function preventDefaults(e) {
 });
 
 dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
-dropZone.addEventListener('click', () => fileInput.click());
+dropZone.addEventListener('click', (e) => {
+  if (e.target.closest('#btn-mobile-paste')) return;
+  fileInput.click();
+});
 fileInput.addEventListener('change', function() {
   handleFiles(this.files);
 });
+
+const mobilePasteBtn = document.getElementById('btn-mobile-paste');
+if (mobilePasteBtn) {
+  mobilePasteBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
+    if (!adminPassword) return showToast("Admin login required");
+    
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.read) {
+        return showToast("Clipboard API not supported on this browser.");
+      }
+      const clipboardItems = await navigator.clipboard.read();
+      const files = [];
+      for (const clipboardItem of clipboardItems) {
+        for (const type of clipboardItem.types) {
+          if (type.startsWith('image/')) {
+            const blob = await clipboardItem.getType(type);
+            const ext = type.split('/')[1] || 'png';
+            const file = new File([blob], `clipboard-${Date.now()}.${ext}`, { type });
+            files.push(file);
+          }
+        }
+      }
+      if (files.length > 0) {
+        handleFiles(files);
+      } else {
+        showToast('No images found in clipboard');
+      }
+    } catch (err) {
+      console.error(err);
+      showToast('Failed to read clipboard. Check permissions.');
+    }
+  });
+}
 
 function handleFiles(files) {
   if (!adminPassword) return showToast("Admin login required");
