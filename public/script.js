@@ -202,6 +202,12 @@ function renderFiles() {
     return;
   }
 
+  if (activeFilter === 'image' || activeFilter === 'video') {
+    fileList.classList.add('grid-view');
+  } else {
+    fileList.classList.remove('grid-view');
+  }
+
   filtered.forEach(file => {
     const item = document.createElement('div');
     item.className = 'file-item';
@@ -212,13 +218,9 @@ function renderFiles() {
     const shortUrl = file.shortUrl || publicUrl;
     
     const category = getCategory(file.name);
-    let icon = 'fa-file';
-    if (category === 'image') icon = 'fa-image';
-    else if (category === 'video') icon = 'fa-video';
-    else if (category === 'doc') icon = 'fa-file-lines';
-    else if (category === 'archive') icon = 'fa-file-zipper';
+    const iconClass = getFileIcon(file.name);
 
-    let iconHtml = `<i class="fa-solid ${icon} file-icon"></i>`;
+    let iconHtml = `<i class="${iconClass} file-icon"></i>`;
     if (category === 'image') {
       iconHtml = `<div class="file-thumb-container"><img src="${publicUrl}" class="file-thumb" alt="${file.name}" loading="lazy"></div>`;
     }
@@ -256,6 +258,30 @@ function getCategory(filename) {
   if (filename.match(/\.(pdf|txt|md|doc|docx|json)$/i)) return 'doc';
   if (filename.match(/\.(zip|tar|gz|rar|7z)$/i)) return 'archive';
   return 'other';
+}
+
+function getFileIcon(filename) {
+  const extMatch = filename.match(/\.([a-z0-9]+)$/i);
+  const ext = extMatch ? extMatch[1].toLowerCase() : '';
+  
+  switch(ext) {
+    case 'pdf': return 'fa-solid fa-file-pdf';
+    case 'doc': case 'docx': return 'fa-solid fa-file-word';
+    case 'xls': case 'xlsx': return 'fa-solid fa-file-excel';
+    case 'csv': return 'fa-solid fa-file-csv';
+    case 'ppt': case 'pptx': return 'fa-solid fa-file-powerpoint';
+    case 'zip': case 'tar': case 'gz': case 'rar': case '7z': return 'fa-solid fa-file-zipper';
+    case 'mp3': case 'wav': case 'ogg': case 'flac': return 'fa-solid fa-file-audio';
+    case 'mp4': case 'webm': case 'mov': case 'mkv': return 'fa-solid fa-file-video';
+    case 'js': case 'ts': case 'jsx': case 'tsx': return 'fa-brands fa-js';
+    case 'py': return 'fa-brands fa-python';
+    case 'html': return 'fa-brands fa-html5';
+    case 'css': return 'fa-brands fa-css3-alt';
+    case 'md': case 'markdown': return 'fa-brands fa-markdown';
+    case 'iso': case 'img': return 'fa-solid fa-compact-disc';
+    case 'json': case 'xml': case 'yml': case 'yaml': case 'txt': case 'sh': case 'bash': case 'go': case 'rs': case 'java': case 'c': case 'cpp': return 'fa-solid fa-file-code';
+    default: return 'fa-solid fa-file';
+  }
 }
 
 function openPreview(name, url, category, shortUrl) {
