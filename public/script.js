@@ -304,6 +304,10 @@ function renderFiles() {
       </div>
     `;
 
+    item.querySelector('.file-info').addEventListener('click', () => {
+      openPreview(file);
+    });
+
     const btnDirect = item.querySelector('.btn-direct');
     const btnMarkdown = item.querySelector('.btn-markdown');
     const btnShort = item.querySelector('.btn-short');
@@ -330,8 +334,6 @@ function renderFiles() {
     });
 
     fileList.appendChild(item);
-  });
-}
   });
 }
 
