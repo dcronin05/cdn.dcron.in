@@ -3,20 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CDN — dcron.in</title>
+  <title>Assets</title>
   
   <!-- Open Graph / Social Sharing Meta Tags -->
-  <meta property="og:title" content="Asset CDN — dcron.in">
-  <meta property="og:description" content="Public Object Storage & Asset CDN for danielcronin.">
+  <meta property="og:title" content="Asset Manager">
+  <meta property="og:description" content="Object Storage & Asset Hosting.">
   <meta property="og:type" content="website">
-  <meta property="og:url" content="https://cdn.dcron.in/">
-  <meta property="og:image" content="https://cdn.dcron.in/favicon-96x96.png">
+  <meta property="og:image" content="/favicon-96x96.png">
   
   <meta name="twitter:card" content="summary">
-  <meta name="twitter:title" content="Asset CDN — dcron.in">
-  <meta name="twitter:description" content="Public Object Storage & Asset CDN for danielcronin.">
-  <meta name="twitter:image" content="https://cdn.dcron.in/favicon-96x96.png">
-  <link rel="stylesheet" href="style.css?v=v2.0">
+  <meta name="twitter:title" content="Asset Manager">
+  <meta name="twitter:description" content="Object Storage & Asset Hosting.">
+  <meta name="twitter:image" content="/favicon-96x96.png">
+  <link rel="stylesheet" href="style.css?v=v2.1">
   <link rel="icon" type="image/svg+xml" href="/favicon.svg">
   <link rel="icon" type="image/png" sizes="96x96" href="/favicon-96x96.png">
   <link rel="icon" href="/favicon.ico">
@@ -28,18 +27,18 @@
   <div class="container">
     <header class="header">
       <div class="header__inner">
-        <a href="https://dcron.in/" class="logo-link">
+        <a href="/" class="logo-link" id="brand-logo-link">
           <div class="logo">
             <span class="logo__mark">&gt;</span>
-            <span class="logo__text">dcron.in <span class="logo__sub">/ cdn</span></span>
+            <span class="logo__text" id="brand-logo-text">dcron.in <span class="logo__sub">/ cdn</span></span>
             <span class="logo__cursor"></span>
           </div>
         </a>
         <nav class="menu">
-          <ul class="menu__inner">
-            <li><a href="https://dcron.in/">&lt; Home</a></li>
-            <li><a href="https://docs.dcron.in/" target="_blank">Docs</a></li>
-            <li><a href="https://affine.dcron.in/" target="_blank">Affine</a></li>
+          <ul class="menu__inner" id="nav-menu-list">
+            <li class="cloud-nav-item"><a href="https://dcron.in/">&lt; Home</a></li>
+            <li class="cloud-nav-item"><a href="https://docs.dcron.in/" target="_blank">Docs</a></li>
+            <li class="cloud-nav-item"><a href="https://affine.dcron.in/" target="_blank">Affine</a></li>
             <li><button id="admin-btn" class="btn-admin-nav" title="Admin Login"><i class="fa-solid fa-lock"></i></button></li>
           </ul>
         </nav>
@@ -98,23 +97,22 @@
 
         <div class="pseudo-header-bar">
           <button class="pseudo-col sort-col" data-sort="name">
-            <span>Name</span> <i class="sort-icon fa-solid fa-sort"></i>
+            <span>Name</span>
+            <i class="sort-icon fa-solid fa-sort"></i>
           </button>
-          <div class="pseudo-right">
-            <button class="pseudo-col sort-col active" data-sort="date">
-              <span>Date</span> <i class="sort-icon fa-solid fa-arrow-down"></i>
-            </button>
-            <button class="pseudo-col sort-col" data-sort="size">
-              <span>Size</span> <i class="sort-icon fa-solid fa-sort"></i>
-            </button>
-          </div>
+          <button class="pseudo-col sort-col" data-sort="size">
+            <span>Size</span>
+            <i class="sort-icon fa-solid fa-sort"></i>
+          </button>
+          <button class="pseudo-col sort-col active" data-sort="date">
+            <span>Date</span>
+            <i class="sort-icon fa-solid fa-arrow-down"></i>
+          </button>
         </div>
 
-        <!-- Sidebar (List of assets) -->
-        <div class="files-container">
-          <div class="file-list" id="file-list">
-            <!-- Files dynamically injected here -->
-          </div>
+        <!-- File List Grid/List -->
+        <div class="file-list" id="file-list">
+          <!-- Files dynamically populated by script.js -->
         </div>
       </main>
     </div>
@@ -126,7 +124,7 @@
           <span>•</span>
           <span><a href="https://dcron.in/">dcron.in CDN</a></span>
           <span>•</span>
-          <span class="build-version" style="color: var(--text-light); font-size: 0.85em;">v2.0</span>
+          <span class="build-version" style="color: var(--text-light); font-size: 0.85em;">v2.1</span>
         </div>
       </div>
     </footer>
@@ -165,7 +163,7 @@
         
         <div class="modal-actions">
           <button type="button" class="btn btn-secondary" id="cancel-login">Cancel</button>
-          <button type="submit" class="btn btn-primary">Unlock</button>
+          <button type="submit" class="btn btn-primary" id="submit-login">Unlock</button>
         </div>
       </form>
     </div>
@@ -173,6 +171,6 @@
 
   <div id="toast" class="toast"></div>
 
-  <script src="script.js?v=v2.0"></script>
+  <script src="script.js?v=v2.1"></script>
 </body>
 </html>
