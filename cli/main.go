@@ -199,24 +199,17 @@ func printHelp() {
 	fmt.Printf(`dcron.in / cronin.one Asset CLI Tool %s
 
 USAGE:
-  cdn [flags] <file-path>
-
-EXAMPLES:
-  cdn photo.png                                Upload a file to root
-  cdn "Video Links for Presentation.docx"       Upload a file with spaces in filename
-  cdn -f "school/fall-2026" diagram.png        Upload to a folder namespace
-  cdn -m screenshot.png                        Upload and copy Markdown embed link to clipboard
-  cdn photo.png --url https://media.cronin.one Custom server target
+  cdn [FLAGS] <FILE>
 
 FLAGS:
-  -f, --folder <path>                 Target folder / namespace (e.g. "school/fall-2026")
-  -m, --markdown                      Copy Markdown embed link ![alt](url) to clipboard
+  -f, --folder <PATH>                 Target folder namespace path
+  -m, --markdown                      Copy formatted Markdown embed link to clipboard
   -d, --direct                        Copy direct URL instead of shortlink
-  -u, --url <server-url>              Custom Asset Server URL
-  -w, --password <password>           Custom Admin Password
-  -v, --version                       Display CLI version
-  -U, --update                        Update CLI to latest version
-  -h, --help                          Display documentation
+  -u, --url <URL>                     Asset server base URL
+  -w, --password <PASS>               Admin authentication password
+  -v, --version                       Print version and exit
+  -U, --update                        Update binary to latest release
+  -h, --help                          Print this help message
 `, Version)
 }
 
