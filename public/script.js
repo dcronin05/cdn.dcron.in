@@ -21,6 +21,7 @@ const loginModal = document.getElementById('login-modal');
 const loginForm = document.getElementById('login-form');
 const pwdInput = document.getElementById('password-input');
 const cancelLogin = document.getElementById('cancel-login');
+const submitLogin = document.getElementById('submit-login');
 
 // Preview Modal Elements
 const previewModal = document.getElementById('preview-modal');
@@ -28,9 +29,10 @@ const previewTitle = document.getElementById('preview-title');
 const previewBody = document.getElementById('preview-body');
 const previewDownload = document.getElementById('preview-download');
 const previewCopy = document.getElementById('preview-copy');
+const previewMarkdown = document.getElementById('preview-markdown');
+const previewShare = document.getElementById('preview-share');
 const closePreview = document.getElementById('close-preview');
 
-const previewShare = document.getElementById('preview-share');
 const sortCols = document.querySelectorAll('.sort-col');
 
 let adminPassword = localStorage.getItem('cdn_admin_pwd') || '';
@@ -40,17 +42,21 @@ let currentSortKey = 'date';
 let currentSortDir = 'desc';
 let searchQuery = '';
 
+let appConfig = {
+  brandName: 'dcron.in',
+  brandSub: 'cdn',
+  brandTitle: 'Asset Manager & Drop Zone',
+  brandSubtitle: 'Public Object Storage & Asset CDN',
+  showNavLinks: true,
+  shortlinkBaseUrl: ''
+};
+
 function formatBytes(bytes) {
   if (!bytes || bytes === 0) return '0 B';
   const k = 1024;
   const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(i === 0 ? 0 : 1)) + ' ' + sizes[i];
-}
-
-// Initialize UI state
-if (adminPassword) {
-  unlockUI();
 }
 
 // Pseudo-column header sort toggle listeners
@@ -98,15 +104,39 @@ cancelLogin.addEventListener('click', () => {
   pwdInput.value = '';
 });
 
-loginForm.addEventListener('submit', (e) => {
+// Immediate auth verification on form submit
+loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const pwd = pwdInput.value;
-  if (pwd) {
-    adminPassword = pwd;
-    localStorage.setItem('cdn_admin_pwd', pwd);
-    unlockUI();
-    loginModal.classList.add('hidden');
-    showToast('Admin Mode Unlocked');
+  if (!pwd) return;
+
+  if (submitLogin) submitLogin.disabled = true;
+
+  try {
+    const res = await fetch('/api/auth/verify', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${pwd}`
+      }
+    });
+
+    if (res.ok) {
+      adminPassword = pwd;
+      localStorage.setItem('cdn_admin_pwd', pwd);
+      unlockUI();
+      loginModal.classList.add('hidden');
+      pwdInput.value = '';
+      showToast('Admin Mode Unlocked');
+    } else {
+      pwdInput.style.borderColor = 'var(--accent-red, #ff5c5c)';
+      setTimeout(() => { pwdInput.style.borderColor = ''; }, 1500);
+      showToast('Invalid password');
+      pwdInput.focus();
+    }
+  } catch (err) {
+    showToast('Authentication check failed');
+  } finally {
+    if (submitLogin) submitLogin.disabled = false;
   }
 });
 
@@ -124,73 +154,99 @@ function lockUI() {
   mainPanel.classList.remove('admin-mode');
 }
 
-// Search and Filter Listeners
-searchInput.addEventListener('input', (e) => {
-  searchQuery = e.target.value.toLowerCase().trim();
-  renderFiles();
-});
-
-filterPills.forEach(pill => {
-  pill.addEventListener('click', () => {
-    filterPills.forEach(p => p.classList.remove('active'));
-    pill.classList.add('active');
-    activeFilter = pill.dataset.filter;
-    renderFiles();
-  });
-});
-
-// Lightbox Preview Modal Listeners
-closePreview.addEventListener('click', () => {
-  previewModal.classList.add('hidden');
-  previewBody.innerHTML = '';
-});
-
-previewModal.addEventListener('click', (e) => {
-  if (e.target === previewModal) {
-    previewModal.classList.add('hidden');
-    previewBody.innerHTML = '';
+async function initAuth() {
+  if (adminPassword) {
+    try {
+      const res = await fetch('/api/auth/verify', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${adminPassword}` }
+      });
+      if (res.ok) {
+        unlockUI();
+      } else {
+        adminPassword = '';
+        localStorage.removeItem('cdn_admin_pwd');
+        lockUI();
+      }
+    } catch (e) {
+      lockUI();
+    }
   }
-});
+}
 
-// Fetch & Render Files
-fetchFiles();
+async function loadConfig() {
+  try {
+    const res = await fetch('/api/config');
+    if (res.ok) {
+      appConfig = await res.json();
+      applyConfig();
+    }
+  } catch (e) {
+    console.error('Failed to load config:', e);
+  }
+}
 
-function fetchFiles() {
-  fetch('/api/files')
-    .then(res => {
-      if (!res.ok) throw new Error('Failed to load files');
-      return res.json();
-    })
-    .then(data => {
-      allFiles = data;
-      renderFiles();
-    })
-    .catch(err => console.error(err));
+function applyConfig() {
+  document.title = `${appConfig.brandSub.toUpperCase()} — ${appConfig.brandName}`;
+  const logoText = document.getElementById('brand-logo-text');
+  if (logoText) {
+    logoText.innerHTML = `${appConfig.brandName} <span class="logo__sub">/ ${appConfig.brandSub}</span>`;
+  }
+  const appHeaderTitle = document.querySelector('.app-header h2');
+  if (appHeaderTitle) {
+    appHeaderTitle.innerHTML = `<i class="fa-solid fa-hard-drive"></i> ${appConfig.brandTitle}`;
+  }
+  const appHeaderSubtitle = document.querySelector('.app-header .subtitle');
+  if (appHeaderSubtitle) {
+    appHeaderSubtitle.textContent = appConfig.brandSubtitle;
+  }
+
+  const cloudNavItems = document.querySelectorAll('.cloud-nav-item');
+  cloudNavItems.forEach(item => {
+    if (appConfig.showNavLinks === false) {
+      item.style.display = 'none';
+    } else {
+      item.style.display = '';
+    }
+  });
+}
+
+// Fetch files from server
+async function fetchFiles() {
+  try {
+    const res = await fetch('/api/files');
+    if (!res.ok) throw new Error('Network response was not ok');
+    allFiles = await res.json();
+    renderFiles();
+  } catch (err) {
+    console.error('Error fetching files:', err);
+    fileList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Failed to load assets</p></div>';
+  }
 }
 
 function renderFiles() {
   fileList.innerHTML = '';
   
-  const filtered = allFiles.filter(file => {
-    const nameMatch = file.name.toLowerCase().includes(searchQuery);
-    const category = getCategory(file.name);
-    const categoryMatch = activeFilter === 'all' || category === activeFilter;
-    return nameMatch && categoryMatch;
+  let filtered = allFiles.filter(file => {
+    const matchesFilter = activeFilter === 'all' || getCategory(file.name) === activeFilter;
+    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesFilter && matchesSearch;
   });
 
   // Sort files
   filtered.sort((a, b) => {
-    if (currentSortKey === 'date') {
-      const diff = new Date(b.lastModified) - new Date(a.lastModified);
-      return currentSortDir === 'desc' ? diff : -diff;
-    }
     if (currentSortKey === 'name') {
-      const diff = a.name.localeCompare(b.name);
-      return currentSortDir === 'asc' ? diff : -diff;
-    }
-    if (currentSortKey === 'size') {
-      const diff = (b.size || 0) - (a.size || 0);
-      return currentSortDir === 'desc' ? diff : -diff;
+      return currentSortDir === 'asc' 
+        ? a.name.localeCompare(b.name) 
+        : b.name.localeCompare(a.name);
+    } else if (currentSortKey === 'size') {
+      return currentSortDir === 'asc' 
+        ? a.size - b.size 
+        : b.size - a.size;
+    } else if (currentSortKey === 'date') {
+      return currentSortDir === 'asc' 
+        ? new Date(a.lastModified) - new Date(b.lastModified) 
+        : new Date(b.lastModified) - new Date(a.lastModified);
     }
     return 0;
   });
@@ -198,35 +254,35 @@ function renderFiles() {
   assetCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'file' : 'files'}`;
 
   if (filtered.length === 0) {
-    fileList.innerHTML = '<div style="text-align:center;color:var(--text-color);padding:2rem;font-family:var(--font-mono);">No matching assets found.</div>';
+    fileList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-box-open"></i><p>No assets found</p></div>';
     return;
-  }
-
-  if (activeFilter === 'image' || activeFilter === 'video') {
-    fileList.classList.add('grid-view');
-  } else {
-    fileList.classList.remove('grid-view');
   }
 
   filtered.forEach(file => {
     const item = document.createElement('div');
     item.className = 'file-item';
     
+    const isImage = getCategory(file.name) === 'image';
+    const publicUrl = file.url || `/${file.name}`;
+    const shortUrl = file.shortUrl || `/s/${file.shortCode}`;
     const size = formatBytes(file.size);
-    const date = new Date(file.lastModified).toLocaleString();
-    const publicUrl = `${window.location.protocol}//${window.location.host}/${file.name}`;
-    const shortUrl = file.shortUrl || publicUrl;
-    
-    const category = getCategory(file.name);
-    const iconClass = getFileIcon(file.name);
+    const date = new Date(file.lastModified).toLocaleDateString(undefined, { 
+      year: 'numeric', month: 'short', day: 'numeric' 
+    });
 
-    let iconHtml = `<i class="${iconClass} file-icon"></i>`;
-    if (category === 'image') {
-      iconHtml = `<div class="file-thumb-container"><img src="${publicUrl}" class="file-thumb" alt="${file.name}" loading="lazy"></div>`;
+    let iconHtml = '';
+    if (isImage) {
+      iconHtml = `<div class="file-thumb"><img src="${publicUrl}" alt="${file.name}" loading="lazy"></div>`;
+    } else {
+      iconHtml = `<div class="file-thumb default-icon">${getFileIcon(file.name)}</div>`;
     }
 
+    item.addEventListener('click', () => {
+      openPreview(file);
+    });
+
     item.innerHTML = `
-      <div class="file-info" onclick="openPreview('${file.name}', '${publicUrl}', '${category}', '${shortUrl}')">
+      <div class="file-info">
         ${iconHtml}
         <div class="file-details">
           <span class="file-name" title="${file.name}">${file.name}</span>
@@ -268,136 +324,147 @@ function getFileIcon(filename) {
   const ext = extMatch ? extMatch[1].toLowerCase() : '';
   
   switch(ext) {
-    case 'pdf': return 'fa-solid fa-file-pdf';
-    case 'doc': case 'docx': return 'fa-solid fa-file-word';
-    case 'xls': case 'xlsx': return 'fa-solid fa-file-excel';
-    case 'csv': return 'fa-solid fa-file-csv';
-    case 'ppt': case 'pptx': return 'fa-solid fa-file-powerpoint';
-    case 'zip': case 'tar': case 'gz': case 'rar': case '7z': return 'fa-solid fa-file-zipper';
-    case 'mp3': case 'wav': case 'ogg': case 'flac': return 'fa-solid fa-file-audio';
-    case 'mp4': case 'webm': case 'mov': case 'mkv': return 'fa-solid fa-file-video';
-    case 'js': case 'ts': case 'jsx': case 'tsx': return 'fa-brands fa-js';
-    case 'py': return 'fa-brands fa-python';
-    case 'html': return 'fa-brands fa-html5';
-    case 'css': return 'fa-brands fa-css3-alt';
-    case 'md': case 'markdown': return 'fa-brands fa-markdown';
-    case 'iso': case 'img': return 'fa-solid fa-compact-disc';
-    case 'json': case 'xml': case 'yml': case 'yaml': case 'txt': case 'sh': case 'bash': case 'go': case 'rs': case 'java': case 'c': case 'cpp': return 'fa-solid fa-file-code';
-    default: return 'fa-solid fa-file';
+    case 'pdf': return '<i class="fa-solid fa-file-pdf"></i>';
+    case 'doc':
+    case 'docx': return '<i class="fa-solid fa-file-word"></i>';
+    case 'zip':
+    case 'tar':
+    case 'gz':
+    case 'rar':
+    case '7z': return '<i class="fa-solid fa-file-zipper"></i>';
+    case 'mp4':
+    case 'webm':
+    case 'mov': return '<i class="fa-solid fa-file-video"></i>';
+    case 'mp3':
+    case 'wav':
+    case 'flac': return '<i class="fa-solid fa-file-audio"></i>';
+    case 'js':
+    case 'json':
+    case 'html':
+    case 'css': return '<i class="fa-solid fa-file-code"></i>';
+    default: return '<i class="fa-solid fa-file"></i>';
   }
 }
 
-function openPreview(name, url, category, shortUrl) {
-  previewTitle.textContent = name;
-  previewDownload.href = url;
-  previewCopy.onclick = () => copyToClipboard(url);
-  if (previewShare) {
-    previewShare.onclick = () => copyToClipboard(shortUrl || url);
-  }
-
-  previewBody.innerHTML = '';
-  if (category === 'image') {
-    previewBody.innerHTML = `<img src="${url}" alt="${name}">`;
-  } else if (category === 'video') {
-    previewBody.innerHTML = `<video src="${url}" controls autoplay style="max-width:100%;max-height:55vh;"></video>`;
-  } else if (name.endsWith('.pdf')) {
-    previewBody.innerHTML = `<iframe src="${url}"></iframe>`;
-  } else {
-    previewBody.innerHTML = `<div style="padding:2rem;text-align:center;color:var(--text-color);font-family:var(--font-mono);"><i class="fa-solid fa-file" style="font-size:3rem;margin-bottom:1rem;display:block;color:var(--blue-accent);"></i>No inline preview available.<br><span style="font-size:0.85rem;color:var(--text-light);">${name}</span></div>`;
-  }
-
-  previewModal.classList.remove('hidden');
-}
-
-// Drag & Drop
-['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-  dropZone.addEventListener(eventName, preventDefaults, false);
-  document.body.addEventListener(eventName, preventDefaults, false);
+// Search & Filter listeners
+searchInput.addEventListener('input', (e) => {
+  searchQuery = e.target.value;
+  renderFiles();
 });
 
-function preventDefaults(e) {
-  e.preventDefault();
-  e.stopPropagation();
-}
+filterPills.forEach(pill => {
+  pill.addEventListener('click', () => {
+    filterPills.forEach(p => p.classList.remove('active'));
+    pill.classList.add('active');
+    activeFilter = pill.dataset.filter;
+    renderFiles();
+  });
+});
 
+// Dropzone Drag/Drop
 ['dragenter', 'dragover'].forEach(eventName => {
-  dropZone.addEventListener(eventName, () => dropZone.classList.add('dragover'), false);
+  dropZone.addEventListener(eventName, (e) => {
+    e.preventDefault();
+    dropZone.classList.add('dragover');
+  }, false);
 });
 
 ['dragleave', 'drop'].forEach(eventName => {
-  dropZone.addEventListener(eventName, () => dropZone.classList.remove('dragover'), false);
+  dropZone.addEventListener(eventName, (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+  }, false);
 });
 
-dropZone.addEventListener('drop', (e) => handleFiles(e.dataTransfer.files), false);
-dropZone.addEventListener('click', (e) => {
-  if (e.target.closest('#btn-mobile-paste')) return;
+dropZone.addEventListener('drop', (e) => {
+  const dt = e.dataTransfer;
+  const files = dt.files;
+  handleFiles(files);
+});
+
+dropZone.addEventListener('click', () => {
   fileInput.click();
 });
-fileInput.addEventListener('change', function() {
-  handleFiles(this.files);
+
+fileInput.addEventListener('change', () => {
+  handleFiles(fileInput.files);
 });
 
-const mobilePasteBtn = document.getElementById('btn-mobile-paste');
-if (mobilePasteBtn) {
-  mobilePasteBtn.addEventListener('click', async (e) => {
+const btnMobilePaste = document.getElementById('btn-mobile-paste');
+if (btnMobilePaste) {
+  btnMobilePaste.addEventListener('click', async (e) => {
     e.stopPropagation();
-    if (!adminPassword) return showToast("Admin login required");
-    
     try {
-      if (!navigator.clipboard || !navigator.clipboard.read) {
-        return showToast("Clipboard API not supported on this browser.");
-      }
       const clipboardItems = await navigator.clipboard.read();
-      const files = [];
-      for (const clipboardItem of clipboardItems) {
-        for (const type of clipboardItem.types) {
+      let foundFile = false;
+      for (const item of clipboardItems) {
+        for (const type of item.types) {
           if (type.startsWith('image/')) {
-            const blob = await clipboardItem.getType(type);
+            const blob = await item.getType(type);
             const ext = type.split('/')[1] || 'png';
             const file = new File([blob], `clipboard-${Date.now()}.${ext}`, { type });
-            files.push(file);
+            handleFiles([file]);
+            foundFile = true;
+            break;
           }
         }
+        if (foundFile) break;
       }
-      if (files.length > 0) {
-        handleFiles(files);
-      } else {
-        showToast('No images found in clipboard');
+      if (!foundFile) {
+        showToast('No image found in clipboard');
       }
     } catch (err) {
-      console.error(err);
-      showToast('Failed to read clipboard. Check permissions.');
+      showToast('Clipboard access denied or unavailable');
     }
   });
 }
 
 function handleFiles(files) {
-  if (!adminPassword) return showToast("Admin login required");
-  const fileArray = [...files];
-  if (fileArray.length === 0) return;
+  if (files.length === 0) return;
+  if (!adminPassword) {
+    loginModal.classList.remove('hidden');
+    pwdInput.focus();
+    return;
+  }
 
-  progressContainer.classList.remove('hidden');
+  const uploadQueue = Array.from(files);
   let completed = 0;
 
-  fileArray.forEach((file) => {
-    uploadFileWithProgress(file, (percent) => {
-      progressBar.style.width = `${percent}%`;
-      progressText.textContent = `Uploading ${file.name} (${percent}%)`;
-    }, () => {
-      completed++;
-      if (completed === fileArray.length) {
+  progressContainer.classList.remove('hidden');
+  progressBar.style.width = '0%';
+  progressText.textContent = `Uploading 0/${uploadQueue.length}...`;
+
+  function uploadNext() {
+    if (uploadQueue.length === 0) {
+      setTimeout(() => {
         progressContainer.classList.add('hidden');
-        progressBar.style.width = '0%';
-        showToast(`Uploaded ${fileArray.length} file(s)`);
         fetchFiles();
-      }
+        showToast('Upload Complete!');
+      }, 500);
+      return;
+    }
+
+    const currentFile = uploadQueue.shift();
+    uploadFileWithProgress(currentFile, (percent) => {
+      const overallPercent = Math.round(((completed + (percent / 100)) / (completed + uploadQueue.length + 1)) * 100);
+      progressBar.style.width = `${overallPercent}%`;
+      progressText.textContent = `Uploading (${completed + 1}/${completed + uploadQueue.length + 1}) ${overallPercent}%`;
+    }, (success) => {
+      if (success) completed++;
+      uploadNext();
     });
-  });
+  }
+
+  uploadNext();
 }
 
 function uploadFileWithProgress(file, onProgress, onComplete) {
   const formData = new FormData();
   formData.append('file', file);
+  const folderInput = document.getElementById('upload-folder');
+  if (folderInput && folderInput.value.trim()) {
+    formData.append('folder', folderInput.value.trim());
+  }
 
   const xhr = new XMLHttpRequest();
   xhr.open('POST', '/api/upload', true);
@@ -405,67 +472,154 @@ function uploadFileWithProgress(file, onProgress, onComplete) {
 
   xhr.upload.onprogress = (e) => {
     if (e.lengthComputable) {
-      const percent = Math.round((e.loaded / e.total) * 100);
-      onProgress(percent);
+      const percentComplete = (e.loaded / e.total) * 100;
+      onProgress(percentComplete);
     }
   };
 
   xhr.onload = () => {
-    if (xhr.status === 401) {
+    if (xhr.status === 200) {
+      try {
+        const res = JSON.parse(xhr.responseText);
+        if (res.shortUrl) {
+          copyToClipboard(res.shortUrl, 'Shortlink copied to clipboard!');
+        }
+      } catch(e){}
+      onComplete(true);
+    } else if (xhr.status === 401) {
       lockUI();
       localStorage.removeItem('cdn_admin_pwd');
-      adminPassword = '';
-      showToast('Invalid Password');
-      progressContainer.classList.add('hidden');
-      return;
+      showToast('Invalid Password. Logged out.');
+      onComplete(false);
+    } else {
+      showToast(`Upload Failed for ${file.name}`);
+      onComplete(false);
     }
-    if (xhr.status !== 200) {
-      showToast('Upload failed');
-      progressContainer.classList.add('hidden');
-      return;
-    }
-    onComplete();
   };
 
   xhr.onerror = () => {
-    showToast('Upload error');
-    progressContainer.classList.add('hidden');
+    showToast(`Network Error uploading ${file.name}`);
+    onComplete(false);
   };
 
   xhr.send(formData);
 }
 
-function copyToClipboard(text) {
-  navigator.clipboard.writeText(text).then(() => {
-    showToast('Link copied to clipboard!');
-  });
-}
+// Delete file
+async function deleteFile(filename) {
+  if (!confirm(`Are you sure you want to delete "${filename}"?`)) return;
+  if (!adminPassword) {
+    showToast('Unauthorized');
+    return;
+  }
 
-window.copyToClipboard = copyToClipboard;
-window.openPreview = openPreview;
-window.deleteFile = function(fileName) {
-  if (!adminPassword) return showToast("Admin login required");
-  if (confirm(`Are you sure you want to delete ${fileName}?`)) {
-    fetch(`/api/files/${fileName}`, { 
+  try {
+    const res = await fetch(`/api/files/${encodeURIComponent(filename)}`, {
       method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${adminPassword}`
       }
-    })
-    .then(res => {
-      if (res.status === 401) {
-        lockUI();
-        localStorage.removeItem('cdn_admin_pwd');
-        adminPassword = '';
-        throw new Error('Invalid Password');
-      }
-      if (!res.ok) throw new Error('Failed to delete');
-      showToast('File deleted');
+    });
+
+    if (res.ok) {
+      showToast(`Deleted ${filename}`);
       fetchFiles();
-    })
-    .catch(err => showToast(err.message));
+    } else if (res.status === 401) {
+      lockUI();
+      localStorage.removeItem('cdn_admin_pwd');
+      showToast('Invalid Password. Logged out.');
+    } else {
+      showToast('Delete failed');
+    }
+  } catch (err) {
+    console.error('Error deleting file:', err);
+    showToast('Error deleting file');
   }
-};
+}
+
+// Preview Modal Logic
+function openPreview(file) {
+  const publicUrl = file.url || `/${file.name}`;
+  const shortUrl = file.shortUrl || `/s/${file.shortCode}`;
+  const category = getCategory(file.name);
+
+  previewTitle.textContent = file.name;
+  previewBody.innerHTML = '';
+
+  if (category === 'image') {
+    previewBody.innerHTML = `<img src="${publicUrl}" alt="${file.name}">`;
+  } else if (category === 'video') {
+    previewBody.innerHTML = `<video src="${publicUrl}" controls autoplay></video>`;
+  } else {
+    previewBody.innerHTML = `
+      <div class="generic-preview">
+        ${getFileIcon(file.name)}
+        <p>${file.name}</p>
+        <span>${formatBytes(file.size)}</span>
+      </div>
+    `;
+  }
+
+  previewDownload.href = publicUrl;
+  previewCopy.onclick = () => copyToClipboard(publicUrl, 'Direct URL copied!');
+  if (previewMarkdown) {
+    previewMarkdown.onclick = () => copyMarkdown(file.name, publicUrl);
+  }
+  previewShare.onclick = () => copyToClipboard(shortUrl, 'Shortlink copied!');
+
+  previewModal.classList.remove('hidden');
+}
+
+closePreview.addEventListener('click', () => {
+  previewModal.classList.add('hidden');
+  previewBody.innerHTML = '';
+});
+
+previewModal.addEventListener('click', (e) => {
+  if (e.target === previewModal) {
+    previewModal.classList.add('hidden');
+    previewBody.innerHTML = '';
+  }
+});
+
+// Clipboard Helper with Fallback
+function copyToClipboard(text, successMsg = 'Link copied to clipboard!') {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(() => {
+      showToast(successMsg);
+    }).catch(() => {
+      fallbackCopy(text, successMsg);
+    });
+  } else {
+    fallbackCopy(text, successMsg);
+  }
+}
+
+function fallbackCopy(text, successMsg) {
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  try {
+    document.execCommand('copy');
+    showToast(successMsg);
+  } catch (err) {
+    showToast('Failed to copy text');
+  }
+  document.body.removeChild(textarea);
+}
+
+function copyMarkdown(filename, url) {
+  const isImg = getCategory(filename) === 'image';
+  const snippet = isImg ? `![${filename}](${url})` : `[${filename}](${url})`;
+  copyToClipboard(snippet, `Copied Markdown: ${snippet}`);
+}
+
+window.copyToClipboard = copyToClipboard;
+window.copyMarkdown = copyMarkdown;
 
 let toastTimeout;
 function showToast(message) {
@@ -480,7 +634,7 @@ function showToast(message) {
 // Paste to upload support
 document.addEventListener('paste', (e) => {
   if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
-    return; // Let normal pasting happen in inputs
+    return;
   }
   
   const items = (e.clipboardData || window.clipboardData).items;
@@ -507,3 +661,8 @@ document.addEventListener('paste', (e) => {
     handleFiles(files);
   }
 });
+
+// App Startup
+loadConfig();
+initAuth();
+fetchFiles();
