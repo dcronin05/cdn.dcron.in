@@ -7,6 +7,7 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -51,26 +52,26 @@ func loadConfig() (string, string) {
 	if err != nil {
 		return "", ""
 	}
-	var url, pwd string
+	var urlStr, pwd string
 	lines := strings.Split(string(data), "\n")
 	for _, line := range lines {
 		line = strings.TrimSpace(line)
 		if strings.HasPrefix(line, "CDN_URL=") {
-			url = strings.Trim(strings.TrimPrefix(line, "CDN_URL="), "\"")
+			urlStr = strings.Trim(strings.TrimPrefix(line, "CDN_URL="), "\"")
 		} else if strings.HasPrefix(line, "CDN_PASSWORD=") {
 			pwd = strings.Trim(strings.TrimPrefix(line, "CDN_PASSWORD="), "\"")
 		}
 	}
-	return url, pwd
+	return urlStr, pwd
 }
 
-func saveConfig(url, pwd string) error {
+func saveConfig(urlStr, pwd string) error {
 	configPath := getConfigPath()
 	dir := filepath.Dir(configPath)
 	if err := os.MkdirAll(dir, 0700); err != nil {
 		return err
 	}
-	content := fmt.Sprintf("CDN_URL=\"%s\"\nCDN_PASSWORD=\"%s\"\n", url, pwd)
+	content := fmt.Sprintf("CDN_URL=\"%s\"\nCDN_PASSWORD=\"%s\"\n", urlStr, pwd)
 	return os.WriteFile(configPath, []byte(content), 0600)
 }
 
@@ -99,7 +100,7 @@ func copyToClipboard(text string, label string) {
 	}
 }
 
-var Version = "v2.0.0"
+var Version = "v2.1.0"
 
 func updateSelf() {
 	fmt.Println("Checking for updates...")
@@ -201,13 +202,14 @@ USAGE:
   cdn [flags] <file-path>
 
 EXAMPLES:
-  cdn photo.png                                Upload to root
-  cdn -f school/fall-2026 diagram.png          Upload to folder namespace
-  cdn -m screenshot.png                        Upload and copy Markdown ![img](url)
-  cdn photo.png --url https://media.cronin.one
+  cdn photo.png                                Upload a file to root
+  cdn "Video Links for Presentation.docx"       Upload a file with spaces in filename
+  cdn -f "school/fall-2026" diagram.png        Upload to a folder namespace
+  cdn -m screenshot.png                        Upload and copy Markdown embed link to clipboard
+  cdn photo.png --url https://media.cronin.one Custom server target
 
 FLAGS:
-  -f, --folder <path>                 Target folder / namespace (e.g. school/fall-2026)
+  -f, --folder <path>                 Target folder / namespace (e.g. "school/fall-2026")
   -m, --markdown                      Copy Markdown embed link ![alt](url) to clipboard
   -d, --direct                        Copy direct URL instead of shortlink
   -u, --url <server-url>              Custom Asset Server URL
@@ -398,10 +400,21 @@ func main() {
 
 	if copyMarkdownFlag {
 		var mdSnippet string
-		if isImageFile(fileName) {
-			mdSnippet = fmt.Sprintf("![%s](%s)", fileName, directURL)
+		safeURL := directURL
+		if u, err := url.Parse(directURL); err == nil {
+			u.Path = strings.ReplaceAll(url.PathEscape(u.Path), "%2F", "/")
+			u.Path = strings.ReplaceAll(u.Path, "(", "%28")
+			u.Path = strings.ReplaceAll(u.Path, ")", "%29")
+			safeURL = u.String()
 		} else {
-			mdSnippet = fmt.Sprintf("[%s](%s)", fileName, directURL)
+			safeURL = strings.ReplaceAll(directURL, " ", "%20")
+		}
+		safeName := strings.ReplaceAll(strings.ReplaceAll(fileName, "[", "\\["), "]", "\\]")
+
+		if isImageFile(fileName) {
+			mdSnippet = fmt.Sprintf("![%s](%s)", safeName, safeURL)
+		} else {
+			mdSnippet = fmt.Sprintf("[%s](%s)", safeName, safeURL)
 		}
 		copyToClipboard(mdSnippet, "Markdown snippet")
 	} else if copyDirectFlag || resData.ShortUrl == "" {

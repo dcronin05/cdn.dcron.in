@@ -277,10 +277,6 @@ function renderFiles() {
       iconHtml = `<div class="file-thumb default-icon">${getFileIcon(file.name)}</div>`;
     }
 
-    item.addEventListener('click', () => {
-      openPreview(file);
-    });
-
     item.innerHTML = `
       <div class="file-info">
         ${iconHtml}
@@ -290,24 +286,52 @@ function renderFiles() {
         </div>
       </div>
       <div class="file-actions">
-        <a class="btn btn-copy" href="${publicUrl}" target="_blank" download title="Download" onclick="event.stopPropagation();">
+        <a class="btn btn-copy btn-download" href="${publicUrl}" target="_blank" download title="Download" onclick="event.stopPropagation();">
           <i class="fa-solid fa-download"></i>
         </a>
-        <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${publicUrl}')" title="Copy Direct URL">
+        <button class="btn btn-copy btn-direct" title="Copy Direct URL">
           <i class="fa-solid fa-link"></i>
         </button>
-        <button class="btn btn-copy" onclick="event.stopPropagation(); copyMarkdown('${file.name}', '${publicUrl}')" title="Copy Markdown Snippet">
+        <button class="btn btn-copy btn-markdown" title="Copy Markdown Snippet">
           <i class="fa-brands fa-markdown"></i>
         </button>
-        <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${shortUrl}')" title="Copy Shortlink (${shortUrl})">
+        <button class="btn btn-copy btn-short" title="Copy Shortlink (${shortUrl})">
           <i class="fa-solid fa-share-nodes"></i>
         </button>
-        <button class="btn btn-delete" onclick="event.stopPropagation(); deleteFile('${file.name}')" title="Delete">
+        <button class="btn btn-delete" title="Delete">
           <i class="fa-solid fa-trash-can"></i>
         </button>
       </div>
     `;
+
+    const btnDirect = item.querySelector('.btn-direct');
+    const btnMarkdown = item.querySelector('.btn-markdown');
+    const btnShort = item.querySelector('.btn-short');
+    const btnDelete = item.querySelector('.btn-delete');
+
+    btnDirect.addEventListener('click', (e) => {
+      e.stopPropagation();
+      copyToClipboard(publicUrl, 'Direct URL copied!');
+    });
+
+    btnMarkdown.addEventListener('click', (e) => {
+      e.stopPropagation();
+      copyMarkdown(file.name, publicUrl);
+    });
+
+    btnShort.addEventListener('click', (e) => {
+      e.stopPropagation();
+      copyToClipboard(shortUrl, 'Shortlink copied!');
+    });
+
+    btnDelete.addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteFile(file.name);
+    });
+
     fileList.appendChild(item);
+  });
+}
   });
 }
 
@@ -614,7 +638,9 @@ function fallbackCopy(text, successMsg) {
 
 function copyMarkdown(filename, url) {
   const isImg = getCategory(filename) === 'image';
-  const snippet = isImg ? `![${filename}](${url})` : `[${filename}](${url})`;
+  const encodedUrl = encodeURI(url).replace(/\(/g, '%28').replace(/\)/g, '%29');
+  const cleanName = filename.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
+  const snippet = isImg ? `![${cleanName}](${encodedUrl})` : `[${cleanName}](${encodedUrl})`;
   copyToClipboard(snippet, `Copied Markdown: ${snippet}`);
 }
 
