@@ -41,13 +41,21 @@ function generateShortCode() {
   return result;
 }
 
+function encodePath(filePath) {
+  return filePath
+    .split('/')
+    .map(segment => encodeURIComponent(segment))
+    .join('/');
+}
+
 function getPublicUrl(req, filePath) {
+  const safePath = encodePath(filePath);
   if (PUBLIC_URL) {
-    return `${PUBLIC_URL}/${filePath}`;
+    return `${PUBLIC_URL}/${safePath}`;
   }
   const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
   const host = req.get('host') || 'cdn.dcron.in';
-  return `${proto}://${host}/${filePath}`;
+  return `${proto}://${host}/${safePath}`;
 }
 
 function getShortUrl(req, code) {
