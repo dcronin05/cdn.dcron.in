@@ -65,6 +65,9 @@
                 <i class="fa-solid fa-clipboard"></i> Paste from Clipboard
               </button>
             </div>
+            <div class="folder-input-wrapper" style="margin-top: 10px;" onclick="event.stopPropagation();">
+              <input type="text" id="upload-folder" placeholder="Folder namespace (e.g. school/fall-2026, optional)" style="background: rgba(255,255,255,0.05); border: 1px solid var(--border-color, #333); border-radius: 6px; padding: 6px 12px; color: var(--text-color, #eee); font-size: 0.85rem; width: 280px; text-align: center;">
+            </div>
           </div>
           <div class="progress-container hidden" id="progress-container">
             <div class="progress-bar-track">
@@ -143,6 +146,7 @@
       <div class="preview-footer">
         <a id="preview-download" href="#" target="_blank" class="btn btn-primary" download><i class="fa-solid fa-download"></i> Download</a>
         <button id="preview-copy" class="btn btn-secondary"><i class="fa-solid fa-link"></i> Copy URL</button>
+        <button id="preview-markdown" class="btn btn-secondary"><i class="fa-brands fa-markdown"></i> Copy Markdown</button>
         <button id="preview-share" class="btn btn-secondary"><i class="fa-solid fa-share-nodes"></i> Share Shortlink</button>
       </div>
     </div>

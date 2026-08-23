@@ -16,10 +16,7 @@ import (
 	"syscall"
 )
 
-// ProgressReader is a custom io.Reader that tracks the number of bytes read
-// and prints a neat CLI progress bar. It intercepts the Read calls as the HTTP
-// client reads the file body.
-
+// ProgressReader tracks upload progress
 type ProgressReader struct {
 	reader io.Reader
 	total  int64
@@ -77,7 +74,7 @@ func saveConfig(url, pwd string) error {
 	return os.WriteFile(configPath, []byte(content), 0600)
 }
 
-func copyToClipboard(text string) {
+func copyToClipboard(text string, label string) {
 	var cmd *exec.Cmd
 	switch runtime.GOOS {
 	case "darwin":
@@ -95,13 +92,15 @@ func copyToClipboard(text string) {
 	}
 	cmd.Stdin = strings.NewReader(text)
 	_ = cmd.Run()
-	fmt.Println("📋 Direct link copied to clipboard!")
+	if label != "" {
+		fmt.Printf("📋 %s copied to clipboard!\n", label)
+	} else {
+		fmt.Println("📋 Link copied to clipboard!")
+	}
 }
 
-var Version = "v1.4.0"
+var Version = "v2.0.0"
 
-// updateSelf checks the GitHub API for the latest release, downloads the appropriate
-// binary for the user's OS and architecture, and seamlessly replaces the running executable.
 func updateSelf() {
 	fmt.Println("Checking for updates...")
 	resp, err := http.Get("https://api.github.com/repos/dcronin05/cdn.dcron.in/releases/latest")
@@ -123,23 +122,26 @@ func updateSelf() {
 			BrowserDownloadURL string `json:"browser_download_url"`
 		} `json:"assets"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&release); err != nil {
-		fmt.Printf("❌ Failed to parse release data: %v\n", err)
+		fmt.Printf("❌ Failed to decode release response: %v\n", err)
 		os.Exit(1)
 	}
 
 	if release.TagName == Version {
-		fmt.Println("✔ You are already running the latest version:", Version)
+		fmt.Printf("✔ You are already on the latest version (%s)\n", Version)
 		os.Exit(0)
 	}
 
-	var downloadURL string
-	targetAsset := fmt.Sprintf("cdn-%s-%s", runtime.GOOS, runtime.GOARCH)
-	if targetAsset == "cdn-windows-amd64" {
+	fmt.Printf("New version available: %s (current: %s)\n", release.TagName, Version)
+
+	arch := runtime.GOARCH
+	osName := runtime.GOOS
+	targetAsset := fmt.Sprintf("cdn-%s-%s", osName, arch)
+	if osName == "windows" {
 		targetAsset += ".exe"
 	}
 
+	var downloadURL string
 	for _, asset := range release.Assets {
 		if asset.Name == targetAsset {
 			downloadURL = asset.BrowserDownloadURL
@@ -148,55 +150,43 @@ func updateSelf() {
 	}
 
 	if downloadURL == "" {
-		fmt.Printf("❌ No precompiled binary found for %s\n", targetAsset)
+		fmt.Printf("❌ Could not find a binary matching your system (%s)\n", targetAsset)
 		os.Exit(1)
 	}
 
-	fmt.Printf("Downloading %s (%s)...\n", release.TagName, targetAsset)
-
-	exePath, err := os.Executable()
+	fmt.Printf("Downloading %s...\n", downloadURL)
+	binResp, err := http.Get(downloadURL)
 	if err != nil {
-		fmt.Printf("❌ Failed to get executable path: %v\n", err)
+		fmt.Printf("❌ Download failed: %v\n", err)
 		os.Exit(1)
 	}
+	defer binResp.Body.Close()
 
-	dlResp, err := http.Get(downloadURL)
+	execPath, err := os.Executable()
 	if err != nil {
-		fmt.Printf("❌ Failed to download update: %v\n", err)
-		os.Exit(1)
-	}
-	defer dlResp.Body.Close()
-
-	if dlResp.StatusCode != http.StatusOK {
-		fmt.Printf("❌ Download failed with HTTP %d\n", dlResp.StatusCode)
+		fmt.Printf("❌ Failed to determine current executable path: %v\n", err)
 		os.Exit(1)
 	}
 
-	tmpFile := exePath + ".new"
+	tmpFile := execPath + ".tmp"
 	out, err := os.OpenFile(tmpFile, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0755)
 	if err != nil {
-		fmt.Printf("❌ Failed to create temp file: %v\n", err)
+		fmt.Printf("❌ Failed to create temp binary file: %v (try running with sudo?)\n", err)
 		os.Exit(1)
 	}
 
-	progressReader := &ProgressReader{
-		reader: dlResp.Body,
-		total:  dlResp.ContentLength,
-	}
-
-	_, err = io.Copy(out, progressReader)
-	out.Close() // Close immediately after copy before rename
-
+	_, err = io.Copy(out, binResp.Body)
+	out.Close()
 	if err != nil {
 		os.Remove(tmpFile)
-		fmt.Printf("\n❌ Error downloading file: %v\n", err)
+		fmt.Printf("❌ Failed to write binary: %v\n", err)
 		os.Exit(1)
 	}
-	fmt.Println()
 
-	if err := os.Rename(tmpFile, exePath); err != nil {
+	err = os.Rename(tmpFile, execPath)
+	if err != nil {
 		os.Remove(tmpFile)
-		fmt.Printf("❌ Failed to replace executable: %v\n", err)
+		fmt.Printf("❌ Failed to replace executable: %v (try running with sudo?)\n", err)
 		os.Exit(1)
 	}
 
@@ -205,23 +195,32 @@ func updateSelf() {
 }
 
 func printHelp() {
-	fmt.Printf(`dcron.in CDN CLI Upload Tool %s
+	fmt.Printf(`dcron.in / cronin.one Asset CLI Tool %s
 
 USAGE:
-  cdn <file-path>
+  cdn [flags] <file-path>
 
 EXAMPLES:
-  cdn photo.png                        Upload to https://cdn.dcron.in/photo.png
-  cdn windows.iso                      Upload to https://cdn.dcron.in/windows.iso
-  cdn photo.png --url https://cdn.dcron.in
+  cdn photo.png                                Upload to root
+  cdn -f school/fall-2026 diagram.png          Upload to folder namespace
+  cdn -m screenshot.png                        Upload and copy Markdown ![img](url)
+  cdn photo.png --url https://media.cronin.one
 
 FLAGS:
-  -u, --url <server-url>              Custom CDN Server URL
-  -w, --password <password>           Custom CDN Admin Password
+  -f, --folder <path>                 Target folder / namespace (e.g. school/fall-2026)
+  -m, --markdown                      Copy Markdown embed link ![alt](url) to clipboard
+  -d, --direct                        Copy direct URL instead of shortlink
+  -u, --url <server-url>              Custom Asset Server URL
+  -w, --password <password>           Custom Admin Password
   -v, --version                       Display CLI version
-  -U, --update                        Update CLI to the latest version
-  -h, --help                          Display CLI documentation and usage
+  -U, --update                        Update CLI to latest version
+  -h, --help                          Display documentation
 `, Version)
+}
+
+func isImageFile(name string) bool {
+	ext := strings.ToLower(filepath.Ext(name))
+	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" || ext == ".svg"
 }
 
 func main() {
@@ -231,6 +230,9 @@ func main() {
 	}
 
 	var filePath string
+	var folder string
+	var copyMarkdownFlag bool
+	var copyDirectFlag bool
 	var overrideURL string
 	var overridePwd string
 
@@ -243,6 +245,13 @@ func main() {
 		} else if arg == "-v" || arg == "--version" || arg == "version" {
 			fmt.Printf("cdn %s\n", Version)
 			os.Exit(0)
+		} else if (arg == "-f" || arg == "--folder") && i+1 < len(args) {
+			folder = args[i+1]
+			i++
+		} else if arg == "-m" || arg == "--markdown" {
+			copyMarkdownFlag = true
+		} else if arg == "-d" || arg == "--direct" {
+			copyDirectFlag = true
 		} else if (arg == "-u" || arg == "--url") && i+1 < len(args) {
 			overrideURL = args[i+1]
 			i++
@@ -279,17 +288,17 @@ func main() {
 	}
 
 	if cdnURL == "" || cdnPwd == "" {
-		fmt.Println("=== dcron.in CDN CLI Setup ===")
-		fmt.Print("CDN Server URL [https://cdn.dcron.in]: ")
+		fmt.Println("=== Asset Server CLI Setup ===")
+		fmt.Print("Server URL [https://media.cronin.one]: ")
 		var inputURL string
 		fmt.Scanln(&inputURL)
 		if strings.TrimSpace(inputURL) != "" {
 			cdnURL = strings.TrimSpace(inputURL)
 		} else {
-			cdnURL = "https://cdn.dcron.in"
+			cdnURL = "https://media.cronin.one"
 		}
 
-		fmt.Print("CDN Admin Password: ")
+		fmt.Print("Admin Password: ")
 		bytePwd, err := termReadPassword()
 		if err != nil {
 			fmt.Scanln(&cdnPwd)
@@ -303,8 +312,13 @@ func main() {
 		}
 	}
 
-	targetName := filepath.Base(filePath)
-	fmt.Printf("Uploading %s to %s...\n", targetName, cdnURL)
+	fileName := filepath.Base(filePath)
+	targetRelative := fileName
+	if folder != "" {
+		targetRelative = strings.Trim(folder, "/") + "/" + fileName
+	}
+
+	fmt.Printf("Uploading %s to %s...\n", targetRelative, cdnURL)
 
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -316,7 +330,11 @@ func main() {
 	body := &bytes.Buffer{}
 	writer := multipart.NewWriter(body)
 
-	part, err := writer.CreateFormFile("file", targetName)
+	if folder != "" {
+		_ = writer.WriteField("folder", folder)
+	}
+
+	part, err := writer.CreateFormFile("file", fileName)
 	if err != nil {
 		fmt.Printf("Error creating form: %v\n", err)
 		os.Exit(1)
@@ -364,16 +382,32 @@ func main() {
 		FileName  string `json:"fileName"`
 		ShortCode string `json:"shortCode"`
 		ShortUrl  string `json:"shortUrl"`
+		DirectUrl string `json:"directUrl"`
 	}
 	_ = json.Unmarshal(respBody, &resData)
 
-	publicURL := fmt.Sprintf("%s/%s", strings.TrimRight(cdnURL, "/"), targetName)
-	fmt.Printf("✔ Direct URL: %s\n", publicURL)
+	directURL := resData.DirectUrl
+	if directURL == "" {
+		directURL = fmt.Sprintf("%s/%s", strings.TrimRight(cdnURL, "/"), targetRelative)
+	}
+
+	fmt.Printf("✔ Direct URL: %s\n", directURL)
 	if resData.ShortUrl != "" {
 		fmt.Printf("🔗 Shortlink:  %s\n", resData.ShortUrl)
-		copyToClipboard(resData.ShortUrl)
+	}
+
+	if copyMarkdownFlag {
+		var mdSnippet string
+		if isImageFile(fileName) {
+			mdSnippet = fmt.Sprintf("![%s](%s)", fileName, directURL)
+		} else {
+			mdSnippet = fmt.Sprintf("[%s](%s)", fileName, directURL)
+		}
+		copyToClipboard(mdSnippet, "Markdown snippet")
+	} else if copyDirectFlag || resData.ShortUrl == "" {
+		copyToClipboard(directURL, "Direct URL")
 	} else {
-		copyToClipboard(publicURL)
+		copyToClipboard(resData.ShortUrl, "Shortlink")
 	}
 }
 
@@ -389,5 +423,3 @@ func termReadPassword() ([]byte, error) {
 	_, err := fmt.Scanln(&pwd)
 	return []byte(pwd), err
 }
-
-

@@ -240,6 +240,9 @@ function renderFiles() {
         <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${publicUrl}')" title="Copy Direct URL">
           <i class="fa-solid fa-link"></i>
         </button>
+        <button class="btn btn-copy" onclick="event.stopPropagation(); copyMarkdown('${file.name}', '${publicUrl}')" title="Copy Markdown Snippet">
+          <i class="fa-brands fa-markdown"></i>
+        </button>
         <button class="btn btn-copy" onclick="event.stopPropagation(); copyToClipboard('${shortUrl}')" title="Copy Shortlink (${shortUrl})">
           <i class="fa-solid fa-share-nodes"></i>
         </button>
