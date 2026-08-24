@@ -7,7 +7,6 @@ import (
 	"io"
 	"mime/multipart"
 	"net/http"
-	"net/url"
 	"os"
 	"os/exec"
 	"os/user"
@@ -213,9 +212,11 @@ FLAGS:
 `, Version)
 }
 
-func isImageFile(name string) bool {
+func isMediaFile(name string) bool {
 	ext := strings.ToLower(filepath.Ext(name))
-	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" || ext == ".svg"
+	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" || ext == ".svg" ||
+		ext == ".mp4" || ext == ".webm" || ext == ".mov" || ext == ".mkv" ||
+		ext == ".mp3" || ext == ".wav" || ext == ".ogg" || ext == ".flac" || ext == ".m4a"
 }
 
 func main() {
@@ -394,17 +395,9 @@ func main() {
 	if copyMarkdownFlag {
 		var mdSnippet string
 		safeURL := directURL
-		if u, err := url.Parse(directURL); err == nil {
-			u.Path = strings.ReplaceAll(url.PathEscape(u.Path), "%2F", "/")
-			u.Path = strings.ReplaceAll(u.Path, "(", "%28")
-			u.Path = strings.ReplaceAll(u.Path, ")", "%29")
-			safeURL = u.String()
-		} else {
-			safeURL = strings.ReplaceAll(directURL, " ", "%20")
-		}
 		safeName := strings.ReplaceAll(strings.ReplaceAll(fileName, "[", "\\["), "]", "\\]")
 
-		if isImageFile(fileName) {
+		if isMediaFile(fileName) {
 			mdSnippet = fmt.Sprintf("![%s](%s)", safeName, safeURL)
 		} else {
 			mdSnippet = fmt.Sprintf("[%s](%s)", safeName, safeURL)
