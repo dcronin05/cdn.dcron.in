@@ -212,11 +212,9 @@ FLAGS:
 `, Version)
 }
 
-func isMediaFile(name string) bool {
+func isImageFile(name string) bool {
 	ext := strings.ToLower(filepath.Ext(name))
-	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" || ext == ".svg" ||
-		ext == ".mp4" || ext == ".webm" || ext == ".mov" || ext == ".mkv" ||
-		ext == ".mp3" || ext == ".wav" || ext == ".ogg" || ext == ".flac" || ext == ".m4a"
+	return ext == ".png" || ext == ".jpg" || ext == ".jpeg" || ext == ".gif" || ext == ".webp" || ext == ".svg"
 }
 
 func main() {
@@ -397,7 +395,7 @@ func main() {
 		safeURL := directURL
 		safeName := strings.ReplaceAll(strings.ReplaceAll(fileName, "[", "\\["), "]", "\\]")
 
-		if isMediaFile(fileName) {
+		if isImageFile(fileName) {
 			mdSnippet = fmt.Sprintf("![%s](%s)", safeName, safeURL)
 		} else {
 			mdSnippet = fmt.Sprintf("[%s](%s)", safeName, safeURL)

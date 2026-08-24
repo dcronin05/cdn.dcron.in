@@ -272,7 +272,13 @@ storage.init((err) => {
   }
 });
 
-const upload = multer({ dest: UPLOADS_TEMP_DIR });
+app.use((req, res, next) => {
+  res.header('Access-Control-Allow-Origin', '*');
+  res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', '*');
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
 
 app.use(express.static('public'));
 app.use(express.json());

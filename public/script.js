@@ -646,10 +646,10 @@ function fallbackCopy(text, successMsg) {
 
 function copyMarkdown(filename, url) {
   const cat = getCategory(filename);
-  const isEmbed = cat === 'image' || cat === 'video';
+  const isImg = cat === 'image';
   const safeUrl = encodeURI(decodeURI(url)).replace(/\(/g, '%28').replace(/\)/g, '%29');
   const cleanName = filename.replace(/\[/g, '\\[').replace(/\]/g, '\\]');
-  const snippet = isEmbed ? `![${cleanName}](${safeUrl})` : `[${cleanName}](${safeUrl})`;
+  const snippet = isImg ? `![${cleanName}](${safeUrl})` : `[${cleanName}](${safeUrl})`;
   copyToClipboard(snippet, `Copied Markdown: ${snippet}`);
 }
 
