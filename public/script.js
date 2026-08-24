@@ -253,6 +253,12 @@ function renderFiles() {
 
   assetCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'file' : 'files'}`;
 
+  if (activeFilter === 'image' || activeFilter === 'video') {
+    fileList.classList.add('grid-view');
+  } else {
+    fileList.classList.remove('grid-view');
+  }
+
   if (filtered.length === 0) {
     fileList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-box-open"></i><p>No assets found</p></div>';
     return;
