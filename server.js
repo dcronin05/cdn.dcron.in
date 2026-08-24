@@ -53,18 +53,14 @@ function getPublicUrl(req, filePath) {
   if (PUBLIC_URL) {
     return `${PUBLIC_URL}/${safePath}`;
   }
-  const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
-  const host = req.get('host') || 'cdn.dcron.in';
-  return `${proto}://${host}/${safePath}`;
+  return `https://cdn.dcron.in/${safePath}`;
 }
 
 function getShortUrl(req, code) {
   if (SHORTLINK_BASE_URL) {
     return `${SHORTLINK_BASE_URL}/s/${code}`;
   }
-  const proto = req.get('x-forwarded-proto') || req.protocol || 'https';
-  const host = req.get('host') || 'cdn.dcron.in';
-  return `${proto}://${host}/s/${code}`;
+  return `https://dcron.in/s/${code}`;
 }
 
 /**
