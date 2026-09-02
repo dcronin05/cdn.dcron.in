@@ -17,9 +17,11 @@ if (!fs.existsSync(UPLOADS_TEMP_DIR)) {
 }
 
 // Storage Driver Selection
-const STORAGE_DRIVER = process.env.STORAGE_DRIVER || (process.env.MINIO_ROOT_USER ? 's3' : 'filesystem');
+const STORAGE_DRIVER = process.env.STORAGE_DRIVER || (process.env.S3_ACCESS_KEY || process.env.MINIO_ROOT_USER ? 's3' : 'filesystem');
 const STORAGE_DIR = path.resolve(process.env.STORAGE_DIR || process.env.STORAGE_PATH || path.join(__dirname, 'storage'));
-const bucketName = process.env.MINIO_BUCKET || 'public';
+// S3_* is the provider-neutral interface.  MINIO_* remains a temporary
+// compatibility path for the existing deployment.
+const bucketName = process.env.S3_BUCKET || process.env.MINIO_BUCKET || 'public';
 
 console.log(`[Storage] Active driver: ${STORAGE_DRIVER}`);
 if (STORAGE_DRIVER === 'filesystem') {
@@ -71,11 +73,11 @@ let storage = null;
 if (STORAGE_DRIVER === 's3') {
   const Minio = require('minio');
   const minioClient = new Minio.Client({
-    endPoint: process.env.MINIO_ENDPOINT || 'minio',
-    port: parseInt(process.env.MINIO_PORT || '9000', 10),
-    useSSL: process.env.MINIO_USE_SSL === 'true',
-    accessKey: process.env.MINIO_ROOT_USER || 'admin',
-    secretKey: process.env.MINIO_ROOT_PASSWORD
+    endPoint: process.env.S3_ENDPOINT || process.env.MINIO_ENDPOINT || 'minio',
+    port: parseInt(process.env.S3_PORT || process.env.MINIO_PORT || '9000', 10),
+    useSSL: (process.env.S3_USE_SSL || process.env.MINIO_USE_SSL) === 'true',
+    accessKey: process.env.S3_ACCESS_KEY || process.env.MINIO_ROOT_USER || 'admin',
+    secretKey: process.env.S3_SECRET_KEY || process.env.MINIO_ROOT_PASSWORD
   });
 
   storage = {
@@ -85,6 +87,9 @@ if (STORAGE_DRIVER === 's3') {
         if (!exists) {
           minioClient.makeBucket(bucketName, 'us-east-1', (err) => {
             if (err) return callback(err);
+            // Public object access is deliberately opt-in.  SeaweedFS stays
+            // private and this application becomes the public delivery edge.
+            if (process.env.S3_SET_PUBLIC_READ !== 'true') return callback(null);
             const policy = {
               Version: "2012-10-17",
               Statement: [{
@@ -148,6 +153,16 @@ if (STORAGE_DRIVER === 's3') {
 
     deleteFile: function(targetRelativePath, callback) {
       minioClient.removeObject(bucketName, targetRelativePath, callback);
+    },
+
+    getFile: function(targetRelativePath, callback) {
+      minioClient.statObject(bucketName, targetRelativePath, (statErr, stat) => {
+        if (statErr) return callback(statErr);
+        minioClient.getObject(bucketName, targetRelativePath, (err, dataStream) => {
+          if (err) return callback(err);
+          callback(null, dataStream, stat);
+        });
+      });
     }
   };
 
@@ -237,6 +252,20 @@ if (STORAGE_DRIVER === 's3') {
       } else {
         callback(null);
       }
+    },
+
+    getFile: function(targetRelativePath, callback) {
+      const targetPath = path.resolve(STORAGE_DIR, targetRelativePath);
+      if (!targetPath.startsWith(`${STORAGE_DIR}${path.sep}`)) {
+        return callback(new Error('Invalid target path traversal.'));
+      }
+      fs.stat(targetPath, (statErr, stat) => {
+        if (statErr || !stat.isFile()) return callback(statErr || new Error('Not a file.'));
+        callback(null, fs.createReadStream(targetPath), {
+          size: stat.size,
+          metaData: { 'content-type': 'application/octet-stream' }
+        });
+      });
     }
   };
 }
@@ -421,10 +450,33 @@ app.delete('/api/files/*', requireAuth, (req, res) => {
   });
 });
 
-// Direct Static File Serving (for Filesystem Driver)
-if (STORAGE_DRIVER === 'filesystem') {
-  app.use(express.static(STORAGE_DIR, { maxAge: '30d', dotfiles: 'ignore' }));
+function validObjectPath(filePath) {
+  return Boolean(filePath) &&
+    !filePath.startsWith('_') &&
+    filePath.split('/').every(segment => segment && segment !== '.' && segment !== '..' && !segment.includes('\0'));
 }
+
+// Public delivery always flows through this application.  The S3 service can
+// therefore remain private and does not need an anonymous bucket policy.
+app.get('/*', (req, res) => {
+  const objectPath = req.params[0];
+  if (!validObjectPath(objectPath)) return res.sendStatus(404);
+
+  storage.getFile(objectPath, (err, dataStream, stat) => {
+    if (err) return res.sendStatus(404);
+
+    const contentType = stat.metaData && (stat.metaData['content-type'] || stat.metaData['Content-Type']);
+    if (contentType) res.type(contentType);
+    if (stat.size !== undefined) res.set('Content-Length', String(stat.size));
+    res.set('Cache-Control', 'public, max-age=2592000, immutable');
+
+    dataStream.on('error', () => {
+      if (!res.headersSent) res.sendStatus(500);
+      else res.destroy();
+    });
+    dataStream.pipe(res);
+  });
+});
 
 const server = app.listen(port, () => {
   console.log(`Asset Server listening on port ${port} (Driver: ${STORAGE_DRIVER})`);

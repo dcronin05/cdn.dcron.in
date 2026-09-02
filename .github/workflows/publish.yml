@@ -31,10 +31,16 @@ jobs:
           tags: ghcr.io/${{ github.repository }}:latest
 
       - name: Announce Push on Bluesky
+        env:
+          WEBHOOK_SECRET: ${{ secrets.WEBHOOK_SECRET }}
         run: |
-          curl -k -X POST https://webhook.dcron.in/webhook \
+          if [ -z "$WEBHOOK_SECRET" ]; then
+            echo "WEBHOOK_SECRET is not configured; skipping announcement."
+            exit 0
+          fi
+          curl --fail --silent --show-error -X POST https://webhook.dcron.in/webhook \
             -H "Content-Type: application/json" \
-            -H "x-webhook-secret: ezp5-yend-wmfx-yyjv" \
+            -H "x-webhook-secret: ${WEBHOOK_SECRET}" \
             -d '{
               "repository": { "name": "${{ github.event.repository.name }}" },
               "commits": [{
