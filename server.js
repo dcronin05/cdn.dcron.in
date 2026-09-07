@@ -30,6 +30,19 @@ if (STORAGE_DRIVER === 'filesystem') {
 
 let shortlinks = {};     // shortCode -> relativeFilePath
 let fileToShortcode = {}; // relativeFilePath -> shortCode
+let fileCatalog = null;
+let fileCatalogRefresh = null;
+let shortlinksReadyResolve;
+const shortlinksReady = new Promise(resolve => {
+  shortlinksReadyResolve = resolve;
+});
+
+const DEFAULT_FILE_PAGE_SIZE = 24;
+const MAX_FILE_PAGE_SIZE = 100;
+const configuredFileCacheTtl = parseInt(process.env.FILE_CACHE_TTL_MS || '30000', 10);
+const FILE_CACHE_TTL_MS = Number.isFinite(configuredFileCacheTtl)
+  ? Math.max(1000, configuredFileCacheTtl)
+  : 30000;
 
 /**
  * Helper: Generate random 6-character shortcode.
@@ -283,6 +296,7 @@ function syncShortlinks() {
       }
       console.log(`Loaded ${Object.keys(shortlinks).length} shortlinks from storage.`);
     }
+    shortlinksReadyResolve();
   });
 }
 
@@ -295,11 +309,92 @@ function persistShortlinks() {
 storage.init((err) => {
   if (err) {
     console.error('Storage initialization failed:', err);
+    shortlinksReadyResolve();
   } else {
     console.log('Storage initialized successfully.');
     syncShortlinks();
+    refreshFileCatalog().catch(err => {
+      console.error('Initial file catalog refresh failed:', err.message);
+    });
   }
 });
+
+function invalidateFileCatalog() {
+  fileCatalog = null;
+}
+
+function refreshFileCatalog(force = false) {
+  const now = Date.now();
+  if (!force && fileCatalog && now - fileCatalog.refreshedAt < FILE_CACHE_TTL_MS) {
+    return Promise.resolve(fileCatalog.files);
+  }
+
+  if (fileCatalogRefresh) return fileCatalogRefresh;
+
+  fileCatalogRefresh = shortlinksReady
+    .then(() => new Promise((resolve, reject) => {
+      storage.listFiles((err, files) => {
+        if (err) return reject(err);
+
+        let updatedShortlinks = false;
+        const catalog = files.map(file => {
+          let code = fileToShortcode[file.name];
+          if (!code) {
+            code = generateShortCode();
+            shortlinks[code] = file.name;
+            fileToShortcode[file.name] = code;
+            updatedShortlinks = true;
+          }
+          return { ...file, shortCode: code };
+        });
+
+        if (updatedShortlinks) persistShortlinks();
+        fileCatalog = { files: catalog, refreshedAt: Date.now() };
+        resolve(catalog);
+      });
+    }))
+    .finally(() => {
+      fileCatalogRefresh = null;
+    });
+
+  return fileCatalogRefresh;
+}
+
+function getFileCategory(filename) {
+  if (/\.(jpg|jpeg|png|gif|webp|svg)$/i.test(filename)) return 'image';
+  if (/\.(mp4|webm|mov)$/i.test(filename)) return 'video';
+  if (/\.(pdf|txt|md|doc|docx|json)$/i.test(filename)) return 'doc';
+  if (/\.(zip|tar|gz|rar|7z)$/i.test(filename)) return 'archive';
+  return 'other';
+}
+
+function sortFiles(files, sortKey, sortDirection) {
+  const direction = sortDirection === 'asc' ? 1 : -1;
+  return [...files].sort((a, b) => {
+    let comparison = 0;
+    if (sortKey === 'name') {
+      comparison = a.name.localeCompare(b.name);
+    } else if (sortKey === 'size') {
+      comparison = (a.size || 0) - (b.size || 0);
+    } else {
+      comparison = new Date(a.lastModified) - new Date(b.lastModified);
+    }
+
+    if (comparison === 0) comparison = a.name.localeCompare(b.name);
+    return comparison * direction;
+  });
+}
+
+function publicFileDetails(req, file) {
+  return {
+    name: file.name,
+    size: file.size,
+    lastModified: file.lastModified,
+    shortCode: file.shortCode,
+    shortUrl: getShortUrl(req, file.shortCode),
+    url: getPublicUrl(req, file.name)
+  };
+}
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -357,36 +452,49 @@ app.get('/s/:code', (req, res) => {
 });
 
 // API: List files (PUBLIC)
-app.get('/api/files', (req, res) => {
-  storage.listFiles((err, files) => {
-    if (err) return res.status(500).json({ error: err.message });
+// Requests without query parameters retain the original array response for API
+// clients. The UI uses the paginated response to keep initial payloads bounded.
+app.get('/api/files', async (req, res) => {
+  try {
+    const files = await refreshFileCatalog();
+    const hasPagination = Object.keys(req.query).length > 0;
+    const query = String(req.query.q || '').trim().toLowerCase();
+    const category = String(req.query.category || 'all').toLowerCase();
+    const sortKey = ['name', 'size', 'date'].includes(req.query.sort) ? req.query.sort : 'date';
+    const sortDirection = req.query.order === 'asc' ? 'asc' : 'desc';
 
-    let updatedShortlinks = false;
-
-    const enriched = files.map(file => {
-      let code = fileToShortcode[file.name];
-      if (!code) {
-        code = generateShortCode();
-        shortlinks[code] = file.name;
-        fileToShortcode[file.name] = code;
-        updatedShortlinks = true;
-      }
-      return {
-        name: file.name,
-        size: file.size,
-        lastModified: file.lastModified,
-        shortCode: code,
-        shortUrl: getShortUrl(req, code),
-        url: getPublicUrl(req, file.name)
-      };
+    let filtered = files.filter(file => {
+      const matchesSearch = !query || file.name.toLowerCase().includes(query);
+      const matchesCategory = category === 'all' || getFileCategory(file.name) === category;
+      return matchesSearch && matchesCategory;
     });
+    filtered = sortFiles(filtered, sortKey, sortDirection);
 
-    if (updatedShortlinks) {
-      persistShortlinks();
+    if (!hasPagination) {
+      return res.json(filtered.map(file => publicFileDetails(req, file)));
     }
 
-    res.json(enriched.sort((a, b) => new Date(b.lastModified) - new Date(a.lastModified)));
-  });
+    const requestedPageSize = parseInt(req.query.pageSize, 10);
+    const pageSize = Math.min(
+      MAX_FILE_PAGE_SIZE,
+      Math.max(1, Number.isFinite(requestedPageSize) ? requestedPageSize : DEFAULT_FILE_PAGE_SIZE)
+    );
+    const total = filtered.length;
+    const totalPages = Math.ceil(total / pageSize);
+    const requestedPage = parseInt(req.query.page, 10);
+    const page = Math.max(
+      1,
+      Math.min(totalPages || 1, Number.isFinite(requestedPage) ? requestedPage : 1)
+    );
+    const start = (page - 1) * pageSize;
+
+    res.json({
+      files: filtered.slice(start, start + pageSize).map(file => publicFileDetails(req, file)),
+      pagination: { page, pageSize, total, totalPages }
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // API: Upload file (PROTECTED)
@@ -418,6 +526,8 @@ app.post('/api/upload', requireAuth, upload.single('file'), (req, res) => {
 
     if (err) return res.status(500).json({ error: err.message });
 
+    invalidateFileCatalog();
+
     const shortUrl = getShortUrl(req, code);
     const directUrl = getPublicUrl(req, targetRelativePath);
 
@@ -446,6 +556,7 @@ app.delete('/api/files/*', requireAuth, (req, res) => {
 
   storage.deleteFile(targetRelativePath, (err) => {
     if (err) return res.status(500).json({ error: err.message });
+    invalidateFileCatalog();
     res.json({ success: true });
   });
 });
