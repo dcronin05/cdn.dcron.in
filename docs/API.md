@@ -11,19 +11,37 @@ Administrative endpoints require a Bearer token in the `Authorization` header co
 ### List Files
 `GET /api/files`
 - **Auth**: Public
-- **Description**: Returns an array of all uploaded files, sorted by newest first. Excludes the hidden `_shortlinks.json` metadata file.
+- **Description**: With no query parameters, returns an array of all uploaded files sorted by newest first. Excludes the hidden `_shortlinks.json` metadata file. For the web UI and clients that need bounded responses, pass `page` and/or `pageSize` to receive a paginated response. Search, category, sorting, and page size are applied server-side.
+- **Query parameters**:
+  - `page` (default `1`)
+  - `pageSize` (default `24`, maximum `100`)
+  - `q` (optional filename search)
+  - `category` (optional: `all`, `image`, `video`, `doc`, or `archive`)
+  - `sort` (optional: `date`, `name`, or `size`; default `date`)
+  - `order` (optional: `asc` or `desc`; default `desc`)
 - **Response**:
 ```json
-[
-  {
-    "name": "photo.png",
-    "size": 1048576,
-    "lastModified": "2024-01-01T12:00:00Z",
-    "shortCode": "aB3x9",
-    "shortUrl": "https://dcron.in/s/aB3x9"
+{
+  "files": [
+    {
+      "name": "photo.png",
+      "size": 1048576,
+      "lastModified": "2024-01-01T12:00:00Z",
+      "shortCode": "aB3x9",
+      "shortUrl": "https://dcron.in/s/aB3x9",
+      "url": "https://cdn.dcron.in/photo.png"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "pageSize": 24,
+    "total": 1,
+    "totalPages": 1
   }
-]
+}
 ```
+
+The server caches the storage metadata catalog for 30 seconds by default so paging does not re-enumerate the bucket on every click. Uploads and deletes invalidate the catalog immediately. Set `FILE_CACHE_TTL_MS` to change the refresh interval.
 
 ### Upload File
 `POST /api/upload`

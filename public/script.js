@@ -32,15 +32,24 @@ const previewCopy = document.getElementById('preview-copy');
 const previewMarkdown = document.getElementById('preview-markdown');
 const previewShare = document.getElementById('preview-share');
 const closePreview = document.getElementById('close-preview');
+const previousPage = document.getElementById('previous-page');
+const nextPage = document.getElementById('next-page');
+const paginationStatus = document.getElementById('pagination-status');
 
 const sortCols = document.querySelectorAll('.sort-col');
 
 let adminPassword = localStorage.getItem('cdn_admin_pwd') || '';
-let allFiles = [];
+let visibleFiles = [];
 let activeFilter = 'all';
 let currentSortKey = 'date';
 let currentSortDir = 'desc';
 let searchQuery = '';
+let currentPage = 1;
+let totalPages = 1;
+let totalFiles = 0;
+let fetchController = null;
+let searchDebounce;
+const pageSize = 24;
 
 let appConfig = {
   brandName: 'dcron.in',
@@ -82,7 +91,8 @@ sortCols.forEach(col => {
       activeIcon.className = `sort-icon fa-solid ${currentSortDir === 'desc' ? 'fa-arrow-down' : 'fa-arrow-up'}`;
     }
 
-    renderFiles();
+    currentPage = 1;
+    fetchFiles();
   });
 });
 
@@ -211,47 +221,54 @@ function applyConfig() {
   });
 }
 
-// Fetch files from server
+// Fetch one page from the server. Filtering and sorting happen before paging so
+// the browser only receives and renders the records it needs for this view.
 async function fetchFiles() {
+  if (fetchController) fetchController.abort();
+  fetchController = new AbortController();
+
+  const params = new URLSearchParams({
+    page: String(currentPage),
+    pageSize: String(pageSize),
+    q: searchQuery,
+    category: activeFilter,
+    sort: currentSortKey,
+    order: currentSortDir
+  });
+
+  fileList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-spinner fa-spin"></i><p>Loading assets…</p></div>';
+
   try {
-    const res = await fetch('/api/files');
+    const res = await fetch(`/api/files?${params.toString()}`, { signal: fetchController.signal });
     if (!res.ok) throw new Error('Network response was not ok');
-    allFiles = await res.json();
+    const payload = await res.json();
+    visibleFiles = Array.isArray(payload) ? payload : payload.files;
+    if (!Array.isArray(visibleFiles)) throw new Error('Invalid file list response');
+
+    if (payload.pagination) {
+      currentPage = payload.pagination.page;
+      totalPages = payload.pagination.totalPages || 1;
+      totalFiles = payload.pagination.total;
+    } else {
+      totalPages = 1;
+      totalFiles = visibleFiles.length;
+    }
     renderFiles();
   } catch (err) {
+    if (err.name === 'AbortError') return;
     console.error('Error fetching files:', err);
+    visibleFiles = [];
+    totalFiles = 0;
+    totalPages = 1;
     fileList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><p>Failed to load assets</p></div>';
+    updatePagination();
   }
 }
 
 function renderFiles() {
   fileList.innerHTML = '';
-  
-  let filtered = allFiles.filter(file => {
-    const matchesFilter = activeFilter === 'all' || getCategory(file.name) === activeFilter;
-    const matchesSearch = file.name.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
 
-  // Sort files
-  filtered.sort((a, b) => {
-    if (currentSortKey === 'name') {
-      return currentSortDir === 'asc' 
-        ? a.name.localeCompare(b.name) 
-        : b.name.localeCompare(a.name);
-    } else if (currentSortKey === 'size') {
-      return currentSortDir === 'asc' 
-        ? a.size - b.size 
-        : b.size - a.size;
-    } else if (currentSortKey === 'date') {
-      return currentSortDir === 'asc' 
-        ? new Date(a.lastModified) - new Date(b.lastModified) 
-        : new Date(b.lastModified) - new Date(a.lastModified);
-    }
-    return 0;
-  });
-
-  assetCount.textContent = `${filtered.length} ${filtered.length === 1 ? 'file' : 'files'}`;
+  assetCount.textContent = `${totalFiles} ${totalFiles === 1 ? 'file' : 'files'}`;
 
   if (activeFilter === 'image' || activeFilter === 'video') {
     fileList.classList.add('grid-view');
@@ -259,12 +276,13 @@ function renderFiles() {
     fileList.classList.remove('grid-view');
   }
 
-  if (filtered.length === 0) {
+  if (visibleFiles.length === 0) {
     fileList.innerHTML = '<div class="empty-state"><i class="fa-solid fa-box-open"></i><p>No assets found</p></div>';
+    updatePagination();
     return;
   }
 
-  filtered.forEach(file => {
+  visibleFiles.forEach(file => {
     const item = document.createElement('div');
     item.className = 'file-item';
     
@@ -341,6 +359,15 @@ function renderFiles() {
 
     fileList.appendChild(item);
   });
+
+  updatePagination();
+}
+
+function updatePagination() {
+  const hasMultiplePages = totalPages > 1;
+  previousPage.disabled = !hasMultiplePages || currentPage <= 1;
+  nextPage.disabled = !hasMultiplePages || currentPage >= totalPages;
+  paginationStatus.textContent = `Page ${currentPage} of ${totalPages}`;
 }
 
 function getCategory(filename) {
@@ -381,7 +408,11 @@ function getFileIcon(filename) {
 // Search & Filter listeners
 searchInput.addEventListener('input', (e) => {
   searchQuery = e.target.value;
-  renderFiles();
+  clearTimeout(searchDebounce);
+  searchDebounce = setTimeout(() => {
+    currentPage = 1;
+    fetchFiles();
+  }, 250);
 });
 
 filterPills.forEach(pill => {
@@ -389,8 +420,23 @@ filterPills.forEach(pill => {
     filterPills.forEach(p => p.classList.remove('active'));
     pill.classList.add('active');
     activeFilter = pill.dataset.filter;
-    renderFiles();
+    currentPage = 1;
+    fetchFiles();
   });
+});
+
+previousPage.addEventListener('click', () => {
+  if (currentPage > 1) {
+    currentPage--;
+    fetchFiles();
+  }
+});
+
+nextPage.addEventListener('click', () => {
+  if (currentPage < totalPages) {
+    currentPage++;
+    fetchFiles();
+  }
 });
 
 // Dropzone Drag/Drop
