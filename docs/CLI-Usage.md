@@ -1,6 +1,6 @@
 # CDN CLI Usage Guide
 
-The `cdn` tool is a bespoke command-line interface written in Go for managing file uploads directly to your self-hosted MinIO bucket.
+The `cdn` tool is a bespoke command-line interface written in Go. It uploads files through the authenticated CDN HTTP API; the server, not the CLI, accesses the configured S3-compatible object store. In the current deployment that backend is SeaweedFS behind a private gateway.
 
 ## Installation
 
@@ -31,6 +31,7 @@ CDN Admin Password:
 ✔ Config saved!
 ```
 These credentials are saved natively to your user profile at `~/.config/cdn/config`.
+Use the CDN application URL (currently `https://cdn.dcron.in`) and its application admin password. Do not configure the SeaweedFS/MinIO S3 credentials in this CLI.
 
 ## Basic Uploading
 
