@@ -3,7 +3,7 @@
 The Node.js backend provides a simple REST API for managing the CDN contents.
 
 ## Authentication
-Administrative endpoints require a Bearer token in the `Authorization` header containing the CDN Admin Password.
+Administrative endpoints require a Bearer token in the `Authorization` header containing the **CDN application admin password**. This is not the S3 access key or secret used internally by the server. Upload clients send requests to the CDN application, not to the private object-store gateway.
 `Authorization: Bearer <your_password>`
 
 ## Endpoints
@@ -48,7 +48,7 @@ The server caches the storage metadata catalog for 30 seconds by default so pagi
 - **Auth**: Required
 - **Content-Type**: `multipart/form-data`
 - **Body**: `file` (binary)
-- **Description**: Uploads a file to the MinIO bucket and automatically generates a shortlink.
+- **Description**: Uploads a file through the CDN application to its configured S3-compatible object store and automatically generates a shortlink. The current deployment uses the private SeaweedFS S3 gateway; MinIO environment-variable compatibility is retained by the application.
 - **Response**:
 ```json
 {
@@ -62,7 +62,7 @@ The server caches the storage metadata catalog for 30 seconds by default so pagi
 ### Delete File
 `DELETE /api/files/:filename`
 - **Auth**: Required
-- **Description**: Deletes a file from the MinIO bucket and removes its associated shortlink mapping.
+- **Description**: Deletes a file from the configured object store and removes its associated shortlink mapping.
 - **Response**:
 ```json
 {
